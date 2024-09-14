@@ -9,35 +9,21 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv1"
 	"cloud.google.com/go/speech/apiv1/speechpb"
-	"github.com/mattn/go-runewidth"
-	"golang.org/x/term"
 )
 
-func actualLines(s string) int {
-	c, _, err := term.GetSize(int(os.Stdout.Fd()))
+const outputFilePath = "output.txt"
+
+func writeFinalResult(s string) {
+	file, err := os.OpenFile(outputFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
+		return
 	}
-	w := runewidth.StringWidth(s)
-	return w/c + min(1, w%c)
-}
+	defer file.Close()
 
-func clearLines(n int) {
-	for i := 0; i < n; i++ {
-		fmt.Print("\033[F\033[K")
+	if _, err := file.WriteString(s + "\n"); err != nil {
+		log.Fatal(err)
 	}
-}
-
-func printRim(s string) {
-	fmt.Print(s)
-}
-
-func printFinal(s string) {
-	fmt.Print("\033[K")
-	fmt.Print("\033[32m")
-	fmt.Print(s)
-	fmt.Print("\033[0m")
-	fmt.Print("\n")
 }
 
 func main() {
@@ -96,7 +82,6 @@ func main() {
 		}
 	}()
 
-	previousLines := ""
 	for {
 		resp, err := stream.Recv()
 		if err == io.EOF {
@@ -113,24 +98,17 @@ func main() {
 			log.Fatalf("Could not recognize: %v", err)
 		}
 
-		if len(resp.Results) == 0 {
-			continue
-		}
-
-		clearLines(actualLines(previousLines) - 1)
-
-		previousLines = ""
-		fmt.Print("\r")
+		// clear screen
+		fmt.Print("\033[H\033[2J")
+		t := ""
 		for _, result := range resp.Results {
 			s := result.Alternatives[0].Transcript
 			if result.IsFinal {
-				printFinal(s)
-			} else {
-				if len(s) > 0 {
-					previousLines += s
-				}
-				printRim(s)
+				writeFinalResult(s)
 			}
+			t += s
 		}
+
+		fmt.Println(t)
 	}
 }
