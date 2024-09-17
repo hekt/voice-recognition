@@ -1,32 +1,35 @@
-package actions
+package initialize
 
 import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
 
-func Initialize() {
-	ctx := context.Background()
+type Args struct {
+	ProjectID      string
+	RecognizerName string
+	Model          string
+}
+
+func Run(ctx context.Context, args Args) {
 	client, err := speech.NewClient(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	project := os.Getenv("GOOGLE_CLOUD_PROJECT")
-	parent := fmt.Sprintf("projects/%s/locations/global", project)
+	parent := fmt.Sprintf("projects/%s/locations/global", args.ProjectID)
 
 	_, err = client.CreateRecognizer(ctx, &speechpb.CreateRecognizerRequest{
 		Parent:       parent,
-		RecognizerId: recognizerName,
+		RecognizerId: args.RecognizerName,
 		Recognizer: &speechpb.Recognizer{
 			DisplayName: "default-recognizer",
 			DefaultRecognitionConfig: &speechpb.RecognitionConfig{
-				Model:         "long",
+				Model:         args.Model,
 				LanguageCodes: []string{"ja-jp"},
 				DecodingConfig: &speechpb.RecognitionConfig_ExplicitDecodingConfig{
 					ExplicitDecodingConfig: &speechpb.ExplicitDecodingConfig{

@@ -1,4 +1,4 @@
-package actions
+package recognize
 
 import (
 	"context"
@@ -12,14 +12,18 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
 
-func Recognize() {
-	ctx := context.Background()
+type Args struct {
+	ProjectID      string
+	RecognizerName string
+	OutputFilePath string
+}
 
+func Run(ctx context.Context, args Args) {
 	client, err := speech.NewClient(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	stream, err := createStream(ctx, client)
+	stream, err := createStream(ctx, client, args.ProjectID, args.RecognizerName)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,12 +79,12 @@ func Recognize() {
 			s := result.Alternatives[0].Transcript
 			t += s
 			if result.IsFinal {
-				writeFinalResult(s)
+				writeFinalResult(s, args.OutputFilePath)
 				mu.Lock()
 				if err := stream.CloseSend(); err != nil {
 					log.Fatalf("Could not close stream: %v", err)
 				}
-				stream, err = createStream(ctx, client)
+				stream, err = createStream(ctx, client, args.ProjectID, args.RecognizerName)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -93,8 +97,8 @@ func Recognize() {
 	}
 }
 
-func writeFinalResult(s string) {
-	file, err := os.OpenFile(outputFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+func writeFinalResult(s string, path string) {
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -106,14 +110,23 @@ func writeFinalResult(s string) {
 	}
 }
 
-func createStream(ctx context.Context, client *speech.Client) (speechpb.Speech_StreamingRecognizeClient, error) {
+func createStream(
+	ctx context.Context,
+	client *speech.Client,
+	projectID string,
+	recognizerName string,
+) (speechpb.Speech_StreamingRecognizeClient, error) {
 	stream, err := client.StreamingRecognize(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
-		Recognizer: fmt.Sprintf("projects/%s/locations/global/recognizers/%s", os.Getenv("GOOGLE_CLOUD_PROJECT"), recognizerName),
+		Recognizer: fmt.Sprintf(
+			"projects/%s/locations/global/recognizers/%s",
+			projectID,
+			recognizerName,
+		),
 		StreamingRequest: &speechpb.StreamingRecognizeRequest_StreamingConfig{
 			StreamingConfig: &speechpb.StreamingRecognitionConfig{
 				StreamingFeatures: &speechpb.StreamingRecognitionFeatures{
