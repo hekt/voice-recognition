@@ -2,16 +2,27 @@ package recognize
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/signal"
 	"strings"
-	"sync/atomic"
+	"time"
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
+)
+
+const (
+	// streamTimeout はストリームのタイムアウト時間を表す。
+	// この時間を超えるとサーバー側からストリームが切断される。
+	streamTimeout = 5 * time.Minute
+
+	// streamTimeoutOffset はストリームのタイムアウト時間のオフセットを表す。
+	// この時間だけ短く設定することで、ストリームが切断される前に再接続を試みる。
+	streamTimeoutOffset = 10 * time.Second
 )
 
 type Args struct {
@@ -21,79 +32,73 @@ type Args struct {
 }
 
 func Run(ctx context.Context, args Args) {
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
+	defer stop()
+
+	timer := time.NewTimer(streamTimeout - streamTimeoutOffset)
+	defer timer.Stop()
+
 	client, err := speech.NewClient(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	stream, err := createStream(ctx, client, args.ProjectID, args.RecognizerName)
+	defer client.Close()
+
+	stream, err := initializeStream(ctx, client, args.ProjectID, args.RecognizerName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// sendStream を先に終了させるために、receiveStream と sendStream を分ける。
-	// reconnect が true のときは sendStream を新しい stream に切り替える。
-	// receiveStream は sendStream の最後のレスポンスで io.EOF を受け取るので、
-	// そのタイミングで sendStream に切り替え、結果を受信する
+	// sendStream を終了 (CloseSend) したあともレスポンスが送信されることから、それぞれ置き換えるタイミングが違う。
+	// そのため sendStream と receiveStream を別々に持つ。
 	sendStream := stream
 	receiveStream := stream
 
-	reconnect := &atomic.Bool{}
-	reconnect.Store(false)
-
-	// sigint されたときの中間結果をファイルに書き出すために使う。
-	// 更新するのはメインループ内のみなので atomic でなくてもよい。
-	var interimResult string
-
-	// 音声データを受信する channel
+	// レスポンスデータを受信する channel
 	// stream から Recv する goroutine と、その結果を表示する goroutine で使う。
 	responses := make(chan *speechpb.StreamingRecognizeResponse)
 
-	// sigint されたときに interrimResult をファイルに書き出してから終了する goroutine
-	go func() {
-		trap := make(chan os.Signal, 1)
-		signal.Notify(trap, os.Interrupt)
-		sig := <-trap
-		fmt.Printf("Received signal: %v\n", sig)
-		if interimResult != "" {
-			write(interimResult, args.OutputFilePath)
-		}
-		os.Exit(0)
-	}()
+	// 再接続をトリガーする channel
+	// メインループでトリガーされ stream に送信する goroutine で再接続する。
+	reconnect := make(chan struct{})
 
 	// 標準入力から受け取った音声データを gRPC Stream に送信する goroutine
 	go func() {
 		buf := make([]byte, 8192)
 		for {
-			if reconnect.Load() {
+			select {
+			case <-reconnect:
+				// CloseSend を送ったあともレスポンスは送信されるため、この時点では receiveStream は置き換えない。
+				// receiveStream 側で EOF を受信したときに置き換える。
 				if err := sendStream.CloseSend(); err != nil {
 					log.Fatalf("Could not close stream: %v", err)
 				}
-				sendStream, err = createStream(ctx, client, args.ProjectID, args.RecognizerName)
+				sendStream, err = initializeStream(ctx, client, args.ProjectID, args.RecognizerName)
 				if err != nil {
 					log.Fatalf("Could not create stream: %v", err)
 				}
-				reconnect.Store(false)
-			}
-			n, err := os.Stdin.Read(buf)
-			if n > 0 {
-				err := sendStream.Send(&speechpb.StreamingRecognizeRequest{
-					StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
-						Audio: buf[:n],
-					},
-				})
+			default:
+				n, err := os.Stdin.Read(buf)
+				if n > 0 {
+					err := sendStream.Send(&speechpb.StreamingRecognizeRequest{
+						StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
+							Audio: buf[:n],
+						},
+					})
+					if err != nil {
+						log.Printf("Could not send audio: %v", err)
+					}
+				}
+				if err == io.EOF {
+					if err := sendStream.CloseSend(); err != nil {
+						log.Fatalf("Could not close stream: %v", err)
+					}
+					return
+				}
 				if err != nil {
-					log.Printf("Could not send audio: %v", err)
+					log.Printf("Could not read from stdin: %v", err)
+					continue
 				}
-			}
-			if err == io.EOF {
-				if err := sendStream.CloseSend(); err != nil {
-					log.Fatalf("Could not close stream: %v", err)
-				}
-				return
-			}
-			if err != nil {
-				log.Printf("Could not read from stdin: %v", err)
-				continue
 			}
 		}
 	}()
@@ -104,7 +109,7 @@ func Run(ctx context.Context, args Args) {
 		for {
 			resp, err := receiveStream.Recv()
 			if err == io.EOF {
-				fmt.Println("Stream closed. reconnectiong...")
+				// CloseSend を送信したあとに EOF を受信したとき、新しいストリームを受信する。
 				if receiveStream == sendStream {
 					fmt.Println("no new stream")
 					break
@@ -113,34 +118,47 @@ func Run(ctx context.Context, args Args) {
 				continue
 			}
 			if err != nil {
-				log.Fatalf("Cannot stream results: %v", err)
+				if !errors.Is(err, context.Canceled) {
+					log.Fatalf("Cannot stream results: %v", err)
+				}
 			}
 			responses <- resp
 		}
 	}()
 
-	// メインループ。結果を受信して表示する。
 	var sb strings.Builder
-	for resp := range responses {
-		sb.Reset()
-		for _, result := range resp.Results {
-			s := result.Alternatives[0].Transcript
-			sb.WriteString(s)
-			if result.IsFinal {
-				write(s, args.OutputFilePath)
-				reconnect.Store(true)
-				interimResult = ""
-				break
+	var interimResult string
+	for {
+		select {
+		case <-ctx.Done():
+			// SIGINT が送信されたとき、結果をファイルに書き込んで終了する。
+			if interimResult != "" {
+				writeResultToFile(interimResult, args.OutputFilePath)
 			}
-		}
+			return
+		case <-timer.C:
+			// 一定時間ごとに再接続する。
+			timer.Reset(streamTimeout - streamTimeoutOffset)
+			reconnect <- struct{}{}
+		case resp := <-responses:
+			// レスポンス処理
+			sb.Reset()
+			for _, result := range resp.Results {
+				s := result.Alternatives[0].Transcript
+				sb.WriteString(s)
+				if result.IsFinal {
+					writeResultToFile(s, args.OutputFilePath)
+					interimResult = ""
+					break
+				}
+			}
 
-		if sb.Len() == 0 {
-			continue
-		}
+			if sb.Len() == 0 {
+				continue
+			}
 
-		t := sb.String()
-		if len(t) != len(interimResult) {
-			t = sb.String()
+			t := sb.String()
+
 			// clear screen
 			fmt.Print("\033[H\033[2J")
 			// 緑で表示
@@ -148,13 +166,13 @@ func Run(ctx context.Context, args Args) {
 			fmt.Print(t)
 			fmt.Print("\033[0m")
 			fmt.Print("\n")
-		}
 
-		interimResult = t
+			interimResult = t
+		}
 	}
 }
 
-func write(s string, path string) {
+func writeResultToFile(s string, path string) {
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatal(err)
@@ -167,24 +185,7 @@ func write(s string, path string) {
 	}
 }
 
-func splitInterimResult(current string, previous string) (string, string) {
-	c := []rune(current)
-	p := []rune(previous)
-
-	minLen := min(len(c), len(p))
-	var i int
-	for i = 0; i < minLen; i++ {
-		if c[i] != p[i] {
-			break
-		}
-	}
-
-	prefix := string(c[:i])
-	rest := string(p[i:])
-	return prefix, rest
-}
-
-func createStream(
+func initializeStream(
 	ctx context.Context,
 	client *speech.Client,
 	projectID string,
