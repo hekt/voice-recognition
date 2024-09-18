@@ -6,7 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
-	"sync"
+	"os/signal"
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
@@ -28,30 +28,41 @@ func Run(ctx context.Context, args Args) {
 		log.Fatal(err)
 	}
 
-	// is_final が来たタイミングで stream をリセット（切断・再接続）するが、
-	// そのときに送信側で stream を利用しているとエラーが発生するので、ロックをかける。
-	var mu sync.Mutex
+	// sendStream を先に終了させるために、receiveStream と sendStream を分ける。
+	// reconnect が true のときは sendStream を新しい stream に切り替える。
+	// receiveStream は sendStream の最後のレスポンスで io.EOF を受け取るので、
+	// そのタイミングで sendStream に切り替え、結果を受信する
+	sendStream := stream
+	receiveStream := stream
+	reconnect := false
 
+	// 標準入力から受け取った音声データを gRPC Stream に送信する goroutine
 	go func() {
-		// Pipe stdin to the API.
 		buf := make([]byte, 1024)
 		for {
+			if reconnect {
+				if err := sendStream.CloseSend(); err != nil {
+					log.Fatalf("Could not close stream: %v", err)
+				}
+				sendStream, err = createStream(ctx, client, args.ProjectID, args.RecognizerName)
+				if err != nil {
+					log.Fatalf("Could not create stream: %v", err)
+				}
+				reconnect = false
+			}
 			n, err := os.Stdin.Read(buf)
 			if n > 0 {
-				mu.Lock()
-				err := stream.Send(&speechpb.StreamingRecognizeRequest{
+				err := sendStream.Send(&speechpb.StreamingRecognizeRequest{
 					StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
 						Audio: buf[:n],
 					},
 				})
-				mu.Unlock()
 				if err != nil {
 					log.Printf("Could not send audio: %v", err)
 				}
 			}
 			if err == io.EOF {
-				// Nothing else to pipe, close the stream.
-				if err := stream.CloseSend(); err != nil {
+				if err := sendStream.CloseSend(); err != nil {
 					log.Fatalf("Could not close stream: %v", err)
 				}
 				return
@@ -63,10 +74,32 @@ func Run(ctx context.Context, args Args) {
 		}
 	}()
 
+	// sigint されたときの中間結果をファイルに書き出すためのバッファ
+	var interrimResult string
+
+	// sigint されたときに interrimResult をファイルに書き出してから終了する
+	go func() {
+		trap := make(chan os.Signal, 1)
+		signal.Notify(trap, os.Interrupt)
+		sig := <-trap
+		fmt.Printf("Received signal: %v\n", sig)
+		if interrimResult != "" {
+			writeFinalResult(interrimResult, args.OutputFilePath)
+		}
+		os.Exit(0)
+	}()
+
+	// gRPC Stream から結果を受信して標準出力に表示する
 	for {
-		resp, err := stream.Recv()
+		resp, err := receiveStream.Recv()
 		if err == io.EOF {
-			break
+			fmt.Println("Stream closed. reconnectiong...")
+			if receiveStream == sendStream {
+				fmt.Println("no new stream")
+				break
+			}
+			receiveStream = sendStream
+			continue
 		}
 		if err != nil {
 			log.Fatalf("Cannot stream results: %v", err)
@@ -80,19 +113,13 @@ func Run(ctx context.Context, args Args) {
 			t += s
 			if result.IsFinal {
 				writeFinalResult(s, args.OutputFilePath)
-				mu.Lock()
-				if err := stream.CloseSend(); err != nil {
-					log.Fatalf("Could not close stream: %v", err)
-				}
-				stream, err = createStream(ctx, client, args.ProjectID, args.RecognizerName)
-				if err != nil {
-					log.Fatal(err)
-				}
-				mu.Unlock()
+				reconnect = true
+				interrimResult = ""
 				break
 			}
 		}
 
+		interrimResult = t
 		fmt.Println(t)
 	}
 }
