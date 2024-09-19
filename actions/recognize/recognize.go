@@ -3,7 +3,10 @@ package recognize
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
+
+	"github.com/hekt/voice-recognition/file"
 )
 
 const (
@@ -42,13 +45,21 @@ func Run(ctx context.Context, arg Arg) error {
 		reconnectInterval = streamTimeout - streamTimeoutOffset
 	}
 
+	resultWriter := file.NewFileWriter(
+		outputFilePath,
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+		0644,
+	)
+	interimWriter := os.Stdout
+
 	recognizer, err := newRecognizer(
 		ctx,
 		arg.ProjectID,
 		arg.RecognizerName,
-		outputFilePath,
-		bufferSize,
 		reconnectInterval,
+		bufferSize,
+		resultWriter,
+		interimWriter,
 	)
 	if err != nil {
 		return err

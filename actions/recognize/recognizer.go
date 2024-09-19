@@ -1,29 +1,35 @@
 package recognize
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
-	"strings"
 	"time"
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/hekt/voice-recognition/util"
 )
 
 type recognizer struct {
 	projectID         string
 	recognizerName    string
-	outputFilePath    string
 	reconnectInterval time.Duration
 	bufferSize        int
 
 	// Speech-to-Text API のクライアント
 	client *speech.Client
+	// 確定した結果の出力先。ファイルを想定。
+	resultWriter io.Writer
+	// 中間結果の出力先。ANSI エスケープシーケンスを使っているため実質的には標準出力のみ。
+	interimWriter io.Writer
+
 	// レスポンスデータを受信する channel
 	// stream から Recv する goroutine と、その結果を表示する goroutine で使う。
 	responseCh chan *speechpb.StreamingRecognizeResponse
@@ -38,9 +44,12 @@ type recognizer struct {
 
 func newRecognizer(
 	ctx context.Context,
-	projectID, recognizerName, outputFilePath string,
-	bufferSize int,
+	projectID string,
+	recognizerName string,
 	reconnectInterval time.Duration,
+	bufferSize int,
+	resultWriter io.Writer,
+	interimWriter io.Writer,
 ) (*recognizer, error) {
 	if projectID == "" {
 		return nil, errors.New("project ID must be specified")
@@ -48,14 +57,17 @@ func newRecognizer(
 	if recognizerName == "" {
 		return nil, errors.New("recognizer name must be specified")
 	}
-	if outputFilePath == "" {
-		return nil, errors.New("output file path must be specified")
-	}
 	if bufferSize < 1024 {
 		return nil, errors.New("buffer size must be greater than or equal to 1024")
 	}
 	if reconnectInterval < time.Minute {
 		return nil, errors.New("reconnect interval must be greater than or equal to 1 minute")
+	}
+	if resultWriter == nil {
+		return nil, errors.New("result writer must be specified")
+	}
+	if interimWriter == nil {
+		return nil, errors.New("interim writer must be specified")
 	}
 
 	client, err := speech.NewClient(ctx)
@@ -66,11 +78,14 @@ func newRecognizer(
 	return &recognizer{
 		projectID:         projectID,
 		recognizerName:    recognizerName,
-		outputFilePath:    outputFilePath,
 		reconnectInterval: reconnectInterval,
 		bufferSize:        bufferSize,
 
-		client:      client,
+		resultWriter:  resultWriter,
+		interimWriter: interimWriter,
+
+		client: client,
+
 		responseCh:  make(chan *speechpb.StreamingRecognizeResponse),
 		reconnectCh: make(chan struct{}),
 		newStreamCh: make(chan speechpb.Speech_StreamingRecognizeClient, 2),
@@ -140,14 +155,14 @@ func (r *recognizer) startTimer(ctx context.Context) error {
 }
 
 func (r *recognizer) startResponseProcessor(ctx context.Context) error {
-	var sb strings.Builder
-	var interimResult string
+	var buf bytes.Buffer
+	var interimResult []byte
 	for {
 		select {
 		case <-ctx.Done():
 			// 最後に中間結果をファイルに書き込む。
-			if interimResult != "" {
-				if err := r.writeResultToFile(interimResult); err != nil {
+			if len(interimResult) > 0 {
+				if err := r.writeResult(interimResult); err != nil {
 					return fmt.Errorf("failed to write interim result to file: %w", err)
 				}
 			}
@@ -158,34 +173,27 @@ func (r *recognizer) startResponseProcessor(ctx context.Context) error {
 			}
 
 			// レスポンス処理
-			sb.Reset()
+			buf.Reset()
 			for _, result := range resp.Results {
 				s := result.Alternatives[0].Transcript
 				if result.IsFinal {
-					if err := r.writeResultToFile(s); err != nil {
+					if err := r.writeResult([]byte(s)); err != nil {
 						return fmt.Errorf("failed to write result to file: %w", err)
 					}
-					interimResult = ""
+					interimResult = []byte{}
 					break
 				}
-				sb.WriteString(s)
+				buf.WriteString(s)
 			}
 
-			if sb.Len() == 0 {
+			if buf.Len() == 0 {
 				continue
 			}
 
-			t := sb.String()
-
-			// clear screen
-			fmt.Print("\033[H\033[2J")
-			// 緑で表示
-			fmt.Print("\033[32m")
-			fmt.Print(t)
-			fmt.Print("\033[0m")
-			fmt.Print("\n")
-
-			interimResult = t
+			interimResult = buf.Bytes()
+			if err := r.writeInterim(interimResult); err != nil {
+				return fmt.Errorf("failed to write interim result: %w", err)
+			}
 		}
 	}
 }
@@ -268,15 +276,30 @@ func (r *recognizer) startResponseReceiver(ctx context.Context) error {
 	}
 }
 
-func (r *recognizer) writeResultToFile(s string) error {
-	file, err := os.OpenFile(r.outputFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
+func (r *recognizer) writeResult(b []byte) error {
+	bln := append(b, []byte("\n")...)
+	if _, err := r.resultWriter.Write(bln); err != nil {
+		return fmt.Errorf("failed to write result: %w", err)
 	}
-	defer file.Close()
 
-	if _, err := file.WriteString(s + "\n"); err != nil {
-		return fmt.Errorf("failed to write to file: %w", err)
+	return nil
+}
+
+var (
+	clearScreen = []byte("\033[H\033[2J")
+	greenColor  = []byte("\033[32m")
+	resetColor  = []byte("\033[0m")
+)
+
+func (r *recognizer) writeInterim(b []byte) error {
+	buf := bytes.Buffer{}
+	buf.Write(clearScreen)
+	buf.Write(greenColor)
+	buf.Write(b)
+	buf.Write(resetColor)
+
+	if _, err := r.interimWriter.Write(buf.Bytes()); err != nil {
+		return fmt.Errorf("failed to write interim: %w", err)
 	}
 
 	return nil
@@ -291,11 +314,7 @@ func (r *recognizer) initializeStream(
 	}
 
 	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
-		Recognizer: fmt.Sprintf(
-			"projects/%s/locations/global/recognizers/%s",
-			r.projectID,
-			r.recognizerName,
-		),
+		Recognizer: util.RecognizerFullname(r.projectID, r.recognizerName),
 		StreamingRequest: &speechpb.StreamingRecognizeRequest_StreamingConfig{
 			StreamingConfig: &speechpb.StreamingRecognitionConfig{
 				StreamingFeatures: &speechpb.StreamingRecognitionFeatures{

@@ -7,6 +7,8 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
+
+	"github.com/hekt/voice-recognition/util"
 )
 
 type Args struct {
@@ -21,10 +23,8 @@ func Run(ctx context.Context, args Args) {
 		log.Fatal(err)
 	}
 
-	parent := fmt.Sprintf("projects/%s/locations/global", args.ProjectID)
-
 	_, err = client.CreateRecognizer(ctx, &speechpb.CreateRecognizerRequest{
-		Parent:       parent,
+		Parent:       util.RecognizerParent(args.ProjectID),
 		RecognizerId: args.RecognizerName,
 		Recognizer: &speechpb.Recognizer{
 			DisplayName: "default-recognizer",

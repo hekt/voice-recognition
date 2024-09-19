@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	// command flag values
+	// command flag destinations
 	var (
 		// general
 		project    string
@@ -29,14 +29,12 @@ func main() {
 	generalFlags := []cli.Flag{
 		&cli.StringFlag{
 			Name:        "project",
-			Aliases:     []string{"p"},
 			Usage:       "Google Cloud Project ID",
 			Required:    true,
 			Destination: &project,
 		},
 		&cli.StringFlag{
 			Name:        "recognizer",
-			Aliases:     []string{"r"},
 			Usage:       "Recognizer name",
 			Required:    true,
 			Destination: &recognizer,
@@ -46,9 +44,8 @@ func main() {
 	app := &cli.App{
 		Commands: []*cli.Command{
 			{
-				Name:    "initialize",
-				Aliases: []string{"init", "i"},
-				Usage:   "create recognizer for Speech-to-Text API",
+				Name:  "initialize",
+				Usage: "create recognizer for Speech-to-Text API",
 				Flags: append(
 					generalFlags,
 					&cli.StringFlag{
@@ -69,14 +66,12 @@ func main() {
 				},
 			},
 			{
-				Name:    "recognize",
-				Aliases: []string{"r"},
-				Usage:   "recognize voice",
+				Name:  "recognize",
+				Usage: "recognize voice",
 				Flags: append(
 					generalFlags,
 					&cli.StringFlag{
 						Name:        "output",
-						Aliases:     []string{"o"},
 						Usage:       "Output file path",
 						Destination: &output,
 					},
