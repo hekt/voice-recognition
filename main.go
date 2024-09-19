@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/hekt/voice-recognition/actions/initialize"
 	"github.com/hekt/voice-recognition/actions/recognize"
@@ -81,16 +79,11 @@ func main() {
 					},
 				),
 				Action: func(c *cli.Context) error {
-					if output == "" {
-						output = fmt.Sprintf("output-%d.txt", time.Now().Unix())
+					recognizer, err := recognize.NewRecognizer(c.Context, project, recognizer, output, 0)
+					if err != nil {
+						return err
 					}
-
-					recognize.Run(c.Context, recognize.Args{
-						ProjectID:      project,
-						RecognizerName: recognizer,
-						OutputFilePath: output,
-					})
-					return nil
+					return recognizer.Run(c.Context)
 				},
 			},
 		},
