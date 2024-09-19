@@ -13,6 +13,8 @@ import (
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/hekt/voice-recognition/util"
 )
@@ -160,7 +162,7 @@ func (r *recognizer) startResponseProcessor(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			// 最後に中間結果をファイルに書き込む。
+			// 終了する前に確定していない中間結果を書き込む。
 			if len(interimResult) > 0 {
 				if err := r.writeResult(interimResult); err != nil {
 					return fmt.Errorf("failed to write interim result to file: %w", err)
@@ -218,8 +220,9 @@ func (r *recognizer) startAudioSender(ctx context.Context) error {
 				return fmt.Errorf("failed to initialize stream: %w", err)
 			}
 
-			// CloseSend を送ったあともサーバー側からレスポンスは送信されるため、この時点では受信側では stream を切り替えない。
-			// 受信側で EOF を受信したときに newStreamCh から取り出して置き換える。
+			// CloseSend を送ったあともサーバー側からレスポンスは送信されるため、
+			// この時点では受信側 (startResponseReceiver) では stream を切り替えない。
+			// 受信側で EOF を受信したときに newStreamCh から取り出して切り替える
 			stream = newStream
 			r.newStreamCh <- newStream
 		default:
@@ -260,8 +263,8 @@ func (r *recognizer) startResponseReceiver(ctx context.Context) error {
 		default:
 			resp, err := stream.Recv()
 			if err == io.EOF {
-				// 送信側でストリームが閉じられると、受信側は最後のレスポンスのあと EOF を受信する。
-				// そのタイミングで新しいストリームに切り替える。
+				// 送信側で stream が閉じられると、受信側は最後のレスポンスのあと EOF を受信する。
+				// そのタイミングで新しい stream に切り替える。
 				stream, ok = <-r.newStreamCh
 				if !ok {
 					return fmt.Errorf("failed to get stream from channel")
@@ -269,6 +272,10 @@ func (r *recognizer) startResponseReceiver(ctx context.Context) error {
 				continue
 			}
 			if err != nil {
+				// context canceled はコマンドを SIGINT で終了した際に発生するため、無視する。
+				if status.Code(err) == codes.Canceled {
+					return nil
+				}
 				return fmt.Errorf("failed to receive response: %w", err)
 			}
 			r.responseCh <- resp
