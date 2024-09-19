@@ -2,10 +2,8 @@ package recognize
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -13,6 +11,7 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -26,131 +25,118 @@ const (
 )
 
 type Args struct {
-	ProjectID      string
-	RecognizerName string
-	OutputFilePath string
+	ProjectID         string
+	RecognizerName    string
+	OutputFilePath    string
+	ReconnectInterval time.Duration
 }
 
-func Run(ctx context.Context, args Args) {
+func Run(ctx context.Context, args Args) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
-	timer := time.NewTimer(streamTimeout - streamTimeoutOffset)
-	defer timer.Stop()
-
 	client, err := speech.NewClient(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create speech client: %w", err)
 	}
 	defer client.Close()
 
 	stream, err := initializeStream(ctx, client, args.ProjectID, args.RecognizerName)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to initialize stream: %w", err)
 	}
-
-	// sendStream を終了 (CloseSend) したあともレスポンスが送信されることから、それぞれ置き換えるタイミングが違う。
-	// そのため sendStream と receiveStream を別々に持つ。
-	sendStream := stream
-	receiveStream := stream
 
 	// レスポンスデータを受信する channel
 	// stream から Recv する goroutine と、その結果を表示する goroutine で使う。
-	responses := make(chan *speechpb.StreamingRecognizeResponse)
+	responsesCh := make(chan *speechpb.StreamingRecognizeResponse)
 
 	// 再接続をトリガーする channel
 	// メインループでトリガーされ stream に送信する goroutine で再接続する。
-	reconnect := make(chan struct{})
+	reconnectCh := make(chan struct{})
+
+	// stream を受け渡しするための channel。
+	// audioStream の goroutine と receiveStream の grooutine それぞれで扱うため、2つ用意する。
+	// 最初にそれぞれの goroutine から取り出したあとは基本的には最大でも1つになるはず。
+	newStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 2)
+	newStreamCh <- stream
+	newStreamCh <- stream
+
+	reconnectInterval := args.ReconnectInterval
+	if reconnectInterval == 0 {
+		reconnectInterval = streamTimeout - streamTimeoutOffset
+	}
+
+	eg, egCtx := errgroup.WithContext(ctx)
 
 	// 標準入力から受け取った音声データを gRPC Stream に送信する goroutine
-	go func() {
-		buf := make([]byte, 8192)
-		for {
-			select {
-			case <-reconnect:
-				// CloseSend を送ったあともレスポンスは送信されるため、この時点では receiveStream は置き換えない。
-				// receiveStream 側で EOF を受信したときに置き換える。
-				if err := sendStream.CloseSend(); err != nil {
-					log.Fatalf("Could not close stream: %v", err)
-				}
-				sendStream, err = initializeStream(ctx, client, args.ProjectID, args.RecognizerName)
-				if err != nil {
-					log.Fatalf("Could not create stream: %v", err)
-				}
-			default:
-				n, err := os.Stdin.Read(buf)
-				if n > 0 {
-					err := sendStream.Send(&speechpb.StreamingRecognizeRequest{
-						StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
-							Audio: buf[:n],
-						},
-					})
-					if err != nil {
-						log.Printf("Could not send audio: %v", err)
-					}
-				}
-				if err == io.EOF {
-					if err := sendStream.CloseSend(); err != nil {
-						log.Fatalf("Could not close stream: %v", err)
-					}
-					return
-				}
-				if err != nil {
-					log.Printf("Could not read from stdin: %v", err)
-					continue
-				}
-			}
-		}
-	}()
+	eg.Go(func() error {
+		return startAudioSender(
+			egCtx,
+			args.ProjectID,
+			args.RecognizerName,
+			client,
+			reconnectCh,
+			newStreamCh,
+		)
+	})
 
 	// gRPC Stream から結果を受信して channel に送信する goroutine
-	go func() {
-		defer close(responses)
-		for {
-			resp, err := receiveStream.Recv()
-			if err == io.EOF {
-				// CloseSend を送信したあとに EOF を受信したとき、新しいストリームを受信する。
-				if receiveStream == sendStream {
-					fmt.Println("no new stream")
-					break
-				}
-				receiveStream = sendStream
-				continue
-			}
-			if err != nil {
-				if !errors.Is(err, context.Canceled) {
-					log.Fatalf("Cannot stream results: %v", err)
-				}
-			}
-			responses <- resp
-		}
-	}()
+	eg.Go(func() error {
+		return startResponseReceiver(egCtx, responsesCh, newStreamCh)
+	})
+
+	// メインループ。
+	eg.Go(func() error {
+		return startMainLoop(egCtx, args.OutputFilePath, reconnectInterval, reconnectCh, responsesCh)
+	})
+
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func startMainLoop(
+	ctx context.Context,
+	outputFilePath string,
+	reconnectInterval time.Duration,
+	reconnectCh chan struct{},
+	responsesCh chan *speechpb.StreamingRecognizeResponse,
+) error {
+	timer := time.NewTimer(reconnectInterval)
+	defer timer.Stop()
 
 	var sb strings.Builder
 	var interimResult string
+
 	for {
 		select {
 		case <-ctx.Done():
 			// SIGINT が送信されたとき、結果をファイルに書き込んで終了する。
 			if interimResult != "" {
-				writeResultToFile(interimResult, args.OutputFilePath)
+				if err := writeResultToFile(interimResult, outputFilePath); err != nil {
+					return fmt.Errorf("failed to write interim result to file: %w", err)
+				}
 			}
-			return
+			return nil
 		case <-timer.C:
 			// 一定時間ごとに再接続する。
-			timer.Reset(streamTimeout - streamTimeoutOffset)
-			reconnect <- struct{}{}
-		case resp := <-responses:
+			timer.Reset(reconnectInterval)
+			reconnectCh <- struct{}{}
+		case resp := <-responsesCh:
 			// レスポンス処理
 			sb.Reset()
 			for _, result := range resp.Results {
 				s := result.Alternatives[0].Transcript
-				sb.WriteString(s)
 				if result.IsFinal {
-					writeResultToFile(s, args.OutputFilePath)
+					if err := writeResultToFile(s, outputFilePath); err != nil {
+						return fmt.Errorf("failed to write result to file: %w", err)
+					}
 					interimResult = ""
 					break
 				}
+				sb.WriteString(s)
 			}
 
 			if sb.Len() == 0 {
@@ -172,17 +158,100 @@ func Run(ctx context.Context, args Args) {
 	}
 }
 
-func writeResultToFile(s string, path string) {
+func startAudioSender(
+	ctx context.Context,
+	projectID string,
+	recognizerName string,
+	client *speech.Client,
+	reconnectCh chan struct{},
+	newStreamCh chan speechpb.Speech_StreamingRecognizeClient,
+) error {
+	stream := <-newStreamCh
+
+	buf := make([]byte, 8192)
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-reconnectCh:
+			if err := stream.CloseSend(); err != nil {
+				return fmt.Errorf("failed to close send direction of stream: %w", err)
+			}
+			newStream, err := initializeStream(ctx, client, projectID, recognizerName)
+			if err != nil {
+				return fmt.Errorf("failed to initialize stream: %w", err)
+			}
+
+			// CloseSend を送ったあともサーバー側からレスポンスは送信されるため、この時点では受信側では stream を切り替えない。
+			// 受信側で EOF を受信したときに newStreamCh から取り出して置き換える。
+			stream = newStream
+			newStreamCh <- newStream
+		default:
+			n, err := os.Stdin.Read(buf)
+			if n > 0 {
+				err := stream.Send(&speechpb.StreamingRecognizeRequest{
+					StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
+						Audio: buf[:n],
+					},
+				})
+				if err != nil {
+					return fmt.Errorf("failed to send audio data: %w", err)
+				}
+			}
+			if err == io.EOF {
+				if e := stream.CloseSend(); err != nil {
+					return e
+				}
+				return nil
+			}
+			if err != nil {
+				return fmt.Errorf("failed to read from stdin: %w", err)
+			}
+		}
+	}
+}
+
+func startResponseReceiver(
+	ctx context.Context,
+	responsesCh chan *speechpb.StreamingRecognizeResponse,
+	newStreamCh chan speechpb.Speech_StreamingRecognizeClient,
+) error {
+	defer close(responsesCh)
+
+	stream := <-newStreamCh
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			resp, err := stream.Recv()
+			if err == io.EOF {
+				// 送信側でストリームが閉じられると、受信側は最後のレスポンスのあと EOF を受信する。
+				// そのタイミングで新しいストリームに切り替える。
+				stream = <-newStreamCh
+				continue
+			}
+			if err != nil {
+				return fmt.Errorf("failed to receive response: %w", err)
+			}
+			responsesCh <- resp
+		}
+	}
+}
+
+func writeResultToFile(s string, path string) error {
 	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		log.Fatal(err)
-		return
+		return fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
 	if _, err := file.WriteString(s + "\n"); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to write to file: %w", err)
 	}
+
+	return nil
 }
 
 func initializeStream(
@@ -193,7 +262,7 @@ func initializeStream(
 ) (speechpb.Speech_StreamingRecognizeClient, error) {
 	stream, err := client.StreamingRecognize(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create stream: %w", err)
 	}
 
 	if err := stream.Send(&speechpb.StreamingRecognizeRequest{
@@ -210,7 +279,7 @@ func initializeStream(
 			},
 		},
 	}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to send initial request: %w", err)
 	}
 
 	return stream, nil
