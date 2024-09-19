@@ -45,6 +45,7 @@ func Run(ctx context.Context, arg Arg) error {
 		reconnectInterval = streamTimeout - streamTimeoutOffset
 	}
 
+	audioReader := os.Stdin
 	resultWriter := file.NewFileWriter(
 		outputFilePath,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
@@ -58,6 +59,7 @@ func Run(ctx context.Context, arg Arg) error {
 		arg.RecognizerName,
 		reconnectInterval,
 		bufferSize,
+		audioReader,
 		resultWriter,
 		interimWriter,
 	)

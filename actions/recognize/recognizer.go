@@ -27,6 +27,8 @@ type recognizer struct {
 
 	// Speech-to-Text API のクライアント
 	client *speech.Client
+	// 音声データの入力元。標準入力を想定。
+	audioReader io.Reader
 	// 確定した結果の出力先。ファイルを想定。
 	resultWriter io.Writer
 	// 中間結果の出力先。ANSI エスケープシーケンスを使っているため実質的には標準出力のみ。
@@ -50,6 +52,7 @@ func newRecognizer(
 	recognizerName string,
 	reconnectInterval time.Duration,
 	bufferSize int,
+	audioReader io.Reader,
 	resultWriter io.Writer,
 	interimWriter io.Writer,
 ) (*recognizer, error) {
@@ -64,6 +67,9 @@ func newRecognizer(
 	}
 	if reconnectInterval < time.Minute {
 		return nil, errors.New("reconnect interval must be greater than or equal to 1 minute")
+	}
+	if audioReader == nil {
+		return nil, errors.New("audio reader must be specified")
 	}
 	if resultWriter == nil {
 		return nil, errors.New("result writer must be specified")
@@ -83,6 +89,7 @@ func newRecognizer(
 		reconnectInterval: reconnectInterval,
 		bufferSize:        bufferSize,
 
+		audioReader:   audioReader,
 		resultWriter:  resultWriter,
 		interimWriter: interimWriter,
 
@@ -140,66 +147,6 @@ func (r *recognizer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (r *recognizer) startTimer(ctx context.Context) error {
-	timer := time.NewTimer(r.reconnectInterval)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-timer.C:
-			// 一定時間ごとに再接続する。
-			timer.Reset(r.reconnectInterval)
-			r.reconnectCh <- struct{}{}
-		}
-	}
-}
-
-func (r *recognizer) startResponseProcessor(ctx context.Context) error {
-	var buf bytes.Buffer
-	var interimResult []byte
-	for {
-		select {
-		case <-ctx.Done():
-			// 終了する前に確定していない中間結果を書き込む。
-			if len(interimResult) > 0 {
-				if err := r.writeResult(interimResult); err != nil {
-					return fmt.Errorf("failed to write interim result to file: %w", err)
-				}
-			}
-			return nil
-		case resp, ok := <-r.responseCh:
-			if !ok {
-				return nil
-			}
-
-			// レスポンス処理
-			buf.Reset()
-			for _, result := range resp.Results {
-				s := result.Alternatives[0].Transcript
-				if result.IsFinal {
-					if err := r.writeResult([]byte(s)); err != nil {
-						return fmt.Errorf("failed to write result to file: %w", err)
-					}
-					interimResult = []byte{}
-					break
-				}
-				buf.WriteString(s)
-			}
-
-			if buf.Len() == 0 {
-				continue
-			}
-
-			interimResult = buf.Bytes()
-			if err := r.writeInterim(interimResult); err != nil {
-				return fmt.Errorf("failed to write interim result: %w", err)
-			}
-		}
-	}
-}
-
 func (r *recognizer) startAudioSender(ctx context.Context) error {
 	stream, ok := <-r.newStreamCh
 	if !ok {
@@ -226,7 +173,7 @@ func (r *recognizer) startAudioSender(ctx context.Context) error {
 			stream = newStream
 			r.newStreamCh <- newStream
 		default:
-			n, err := os.Stdin.Read(buf)
+			n, err := r.audioReader.Read(buf)
 			if n > 0 {
 				err := stream.Send(&speechpb.StreamingRecognizeRequest{
 					StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
@@ -283,6 +230,50 @@ func (r *recognizer) startResponseReceiver(ctx context.Context) error {
 	}
 }
 
+func (r *recognizer) startResponseProcessor(ctx context.Context) error {
+	var buf bytes.Buffer
+	var interimResult []byte
+	for {
+		select {
+		case <-ctx.Done():
+			// 終了する前に確定していない中間結果を書き込む。
+			if len(interimResult) > 0 {
+				if err := r.writeResult(interimResult); err != nil {
+					return fmt.Errorf("failed to write interim result to file: %w", err)
+				}
+			}
+			return nil
+		case resp, ok := <-r.responseCh:
+			if !ok {
+				return nil
+			}
+
+			// レスポンス処理
+			buf.Reset()
+			for _, result := range resp.Results {
+				s := result.Alternatives[0].Transcript
+				if result.IsFinal {
+					if err := r.writeResult([]byte(s)); err != nil {
+						return fmt.Errorf("failed to write result to file: %w", err)
+					}
+					interimResult = []byte{}
+					break
+				}
+				buf.WriteString(s)
+			}
+
+			if buf.Len() == 0 {
+				continue
+			}
+
+			interimResult = buf.Bytes()
+			if err := r.writeInterim(interimResult); err != nil {
+				return fmt.Errorf("failed to write interim result: %w", err)
+			}
+		}
+	}
+}
+
 func (r *recognizer) writeResult(b []byte) error {
 	bln := append(b, []byte("\n")...)
 	if _, err := r.resultWriter.Write(bln); err != nil {
@@ -310,6 +301,22 @@ func (r *recognizer) writeInterim(b []byte) error {
 	}
 
 	return nil
+}
+
+func (r *recognizer) startTimer(ctx context.Context) error {
+	timer := time.NewTimer(r.reconnectInterval)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+			// 一定時間ごとに再接続する。
+			timer.Reset(r.reconnectInterval)
+			r.reconnectCh <- struct{}{}
+		}
+	}
 }
 
 func (r *recognizer) initializeStream(
