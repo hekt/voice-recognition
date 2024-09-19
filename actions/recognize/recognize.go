@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	speech "cloud.google.com/go/speech/apiv2"
 	"github.com/hekt/voice-recognition/file"
 )
 
@@ -53,12 +54,17 @@ func Run(ctx context.Context, arg Arg) error {
 	)
 	interimWriter := os.Stdout
 
+	client, err := speech.NewClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create speech client: %w", err)
+	}
+
 	recognizer, err := newRecognizer(
-		ctx,
 		arg.ProjectID,
 		arg.RecognizerName,
 		reconnectInterval,
 		bufferSize,
+		client,
 		audioReader,
 		resultWriter,
 		interimWriter,

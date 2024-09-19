@@ -10,12 +10,12 @@ import (
 	"os/signal"
 	"time"
 
-	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/hekt/voice-recognition/speech"
 	"github.com/hekt/voice-recognition/util"
 )
 
@@ -26,7 +26,7 @@ type recognizer struct {
 	bufferSize        int
 
 	// client は Speech-to-Text API のクライアント。
-	client *speech.Client
+	client speech.Client
 
 	// audioReceive は音声データの入力元。標準入力を想定。
 	audioReader io.Reader
@@ -44,11 +44,11 @@ type recognizer struct {
 }
 
 func newRecognizer(
-	ctx context.Context,
 	projectID string,
 	recognizerName string,
 	reconnectInterval time.Duration,
 	bufferSize int,
+	client speech.Client,
 	audioReader io.Reader,
 	resultWriter io.Writer,
 	interimWriter io.Writer,
@@ -73,11 +73,6 @@ func newRecognizer(
 	}
 	if interimWriter == nil {
 		return nil, errors.New("interim writer must be specified")
-	}
-
-	client, err := speech.NewClient(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create speech client: %w", err)
 	}
 
 	return &recognizer{
@@ -115,7 +110,7 @@ func (r *recognizer) Start(ctx context.Context) error {
 
 	eg, ctx := errgroup.WithContext(ctx)
 
-	// 標準入力から受け取った音声データを gRPC Stream に送信する。
+	// audioReader から受け取った音声データを gRPC Stream に送信する。
 	eg.Go(func() error {
 		return r.startAudioSender(ctx)
 	})
@@ -126,7 +121,7 @@ func (r *recognizer) Start(ctx context.Context) error {
 		return r.startResponseReceiver(ctx)
 	})
 
-	// responseCh からレスポンスを取り出して標準出力やファイルに出力する。
+	// responseCh からレスポンスを取り出して resultWriter や interimWriter に出力する。
 	eg.Go(func() error {
 		return r.startResponseProcessor(ctx)
 	})
