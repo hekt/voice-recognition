@@ -252,7 +252,8 @@ func (r *recognizer) startResponseProcessor(ctx context.Context) error {
 						return fmt.Errorf("failed to write result to file: %w", err)
 					}
 					interimResult = []byte{}
-					break
+					buf.Reset()
+					continue
 				}
 				buf.WriteString(s)
 			}
