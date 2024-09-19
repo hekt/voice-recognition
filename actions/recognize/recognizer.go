@@ -25,25 +25,22 @@ type recognizer struct {
 	reconnectInterval time.Duration
 	bufferSize        int
 
-	// Speech-to-Text API のクライアント
+	// client は Speech-to-Text API のクライアント。
 	client *speech.Client
-	// 音声データの入力元。標準入力を想定。
+
+	// audioReceive は音声データの入力元。標準入力を想定。
 	audioReader io.Reader
-	// 確定した結果の出力先。ファイルを想定。
+	// resultWriter は確定した結果の出力先。ファイルを想定。
 	resultWriter io.Writer
-	// 中間結果の出力先。ANSI エスケープシーケンスを使っているため実質的には標準出力のみ。
+	// interimWrite は中間結果の出力先。ANSI エスケープシーケンスを使っているため実質的には標準出力のみ。
 	interimWriter io.Writer
 
-	// レスポンスデータを受信する channel
-	// stream から Recv する goroutine と、その結果を表示する goroutine で使う。
+	// responseCh はレスポンスデータの受け渡しをする channel。
 	responseCh chan *speechpb.StreamingRecognizeResponse
-	// 再接続をトリガーする channel
-	// メインループでトリガーされ stream に送信する goroutine で再接続する。
-	reconnectCh chan struct{}
-	// stream を受け渡しするための channel。
-	// audioStream の goroutine と receiveStream の grooutine それぞれで扱うため、2つ用意する。
-	// 最初にそれぞれの goroutine から取り出したあとは基本的には最大でも1つになるはず。
-	newStreamCh chan speechpb.Speech_StreamingRecognizeClient
+	// sendStreamCh は送信用の stream を受け渡しする channel。
+	sendStreamCh chan speechpb.Speech_StreamingRecognizeClient
+	// receiveStreamCh は受信用の stream を受け渡しする channel。
+	receiveStreamCh chan speechpb.Speech_StreamingRecognizeClient
 }
 
 func newRecognizer(
@@ -95,9 +92,11 @@ func newRecognizer(
 
 		client: client,
 
-		responseCh:  make(chan *speechpb.StreamingRecognizeResponse),
-		reconnectCh: make(chan struct{}),
-		newStreamCh: make(chan speechpb.Speech_StreamingRecognizeClient, 2),
+		responseCh: make(chan *speechpb.StreamingRecognizeResponse),
+		// stream が取り出されていないということはまだ使われていないということで、
+		// その状態で新しい stream を作成する必要はないため、バッファサイズは 1 にしている。
+		sendStreamCh:    make(chan speechpb.Speech_StreamingRecognizeClient, 1),
+		receiveStreamCh: make(chan speechpb.Speech_StreamingRecognizeClient, 1),
 	}, nil
 }
 
@@ -111,15 +110,13 @@ func (r *recognizer) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize stream: %w", err)
 	}
-	r.newStreamCh <- stream
-	r.newStreamCh <- stream
+	r.sendStreamCh <- stream
+	r.receiveStreamCh <- stream
 
 	eg, ctx := errgroup.WithContext(ctx)
 
 	// 標準入力から受け取った音声データを gRPC Stream に送信する。
-	// reconnectCh からのトリガーで stream の再接続も行い、新しい stream を newStreamCh に送信する。
 	eg.Go(func() error {
-		defer close(r.newStreamCh)
 		return r.startAudioSender(ctx)
 	})
 
@@ -129,15 +126,17 @@ func (r *recognizer) Start(ctx context.Context) error {
 		return r.startResponseReceiver(ctx)
 	})
 
-	// response channel から結果を受信して標準出力やファイルに出力する。
+	// responseCh からレスポンスを取り出して標準出力やファイルに出力する。
 	eg.Go(func() error {
 		return r.startResponseProcessor(ctx)
 	})
 
-	// 一定時間ごとに再接続をトリガーするタイマー。
+	// 一定時間ごとに新しい stream を作成し、sendStreamCh と receiveStreamCh に送信する。
+	// Speech-to-Text API は5分以上ストリームが維持されるとタイムアウトするため。
 	eg.Go(func() error {
-		defer close(r.reconnectCh)
-		return r.startTimer(ctx)
+		defer close(r.sendStreamCh)
+		defer close(r.receiveStreamCh)
+		return r.startStreamSupplier(ctx)
 	})
 
 	if err := eg.Wait(); err != nil {
@@ -148,9 +147,9 @@ func (r *recognizer) Start(ctx context.Context) error {
 }
 
 func (r *recognizer) startAudioSender(ctx context.Context) error {
-	stream, ok := <-r.newStreamCh
+	stream, ok := <-r.sendStreamCh
 	if !ok {
-		return fmt.Errorf("failed to get stream from channel")
+		return fmt.Errorf("failed to get send stream from channel")
 	}
 
 	buf := make([]byte, r.bufferSize)
@@ -158,20 +157,15 @@ func (r *recognizer) startAudioSender(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-r.reconnectCh:
+		case newStream, ok := <-r.sendStreamCh:
+			if !ok {
+				return fmt.Errorf("failed to get new send stream from channel")
+			}
+			// 新しい stream が来たら古い stream を閉じて新しい stream に切り替える。
 			if err := stream.CloseSend(); err != nil {
 				return fmt.Errorf("failed to close send direction of stream: %w", err)
 			}
-			newStream, err := r.initializeStream(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to initialize stream: %w", err)
-			}
-
-			// CloseSend を送ったあともサーバー側からレスポンスは送信されるため、
-			// この時点では受信側 (startResponseReceiver) では stream を切り替えない。
-			// 受信側で EOF を受信したときに newStreamCh から取り出して切り替える
 			stream = newStream
-			r.newStreamCh <- newStream
 		default:
 			n, err := r.audioReader.Read(buf)
 			if n > 0 {
@@ -198,9 +192,9 @@ func (r *recognizer) startAudioSender(ctx context.Context) error {
 }
 
 func (r *recognizer) startResponseReceiver(ctx context.Context) error {
-	stream, ok := <-r.newStreamCh
+	stream, ok := <-r.receiveStreamCh
 	if !ok {
-		return fmt.Errorf("failed to get stream from channel")
+		return fmt.Errorf("failed to get receive stream from channel")
 	}
 
 	for {
@@ -212,14 +206,15 @@ func (r *recognizer) startResponseReceiver(ctx context.Context) error {
 			if err == io.EOF {
 				// 送信側で stream が閉じられると、受信側は最後のレスポンスのあと EOF を受信する。
 				// そのタイミングで新しい stream に切り替える。
-				stream, ok = <-r.newStreamCh
+				newStream, ok := <-r.receiveStreamCh
 				if !ok {
-					return fmt.Errorf("failed to get stream from channel")
+					return fmt.Errorf("failed to get new receive stream from channel")
 				}
+				stream = newStream
 				continue
 			}
 			if err != nil {
-				// context canceled はコマンドを SIGINT で終了した際に発生するため、無視する。
+				// コマンドを SIGINT で終了した際に context canceled error が発生するため、無視する。
 				if status.Code(err) == codes.Canceled {
 					return nil
 				}
@@ -274,9 +269,32 @@ func (r *recognizer) startResponseProcessor(ctx context.Context) error {
 	}
 }
 
+func (r *recognizer) startStreamSupplier(ctx context.Context) error {
+	timer := time.NewTimer(r.reconnectInterval)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+			newStream, err := r.initializeStream(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to initialize stream: %w", err)
+			}
+
+			timer.Reset(r.reconnectInterval)
+
+			r.sendStreamCh <- newStream
+			r.receiveStreamCh <- newStream
+		}
+	}
+}
+
 func (r *recognizer) writeResult(b []byte) error {
-	bln := append(b, []byte("\n")...)
-	if _, err := r.resultWriter.Write(bln); err != nil {
+	buf := bytes.NewBuffer(b)
+	buf.WriteString("\n")
+	if _, err := r.resultWriter.Write(buf.Bytes()); err != nil {
 		return fmt.Errorf("failed to write result: %w", err)
 	}
 
@@ -301,22 +319,6 @@ func (r *recognizer) writeInterim(b []byte) error {
 	}
 
 	return nil
-}
-
-func (r *recognizer) startTimer(ctx context.Context) error {
-	timer := time.NewTimer(r.reconnectInterval)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-timer.C:
-			// 一定時間ごとに再接続する。
-			timer.Reset(r.reconnectInterval)
-			r.reconnectCh <- struct{}{}
-		}
-	}
 }
 
 func (r *recognizer) initializeStream(
