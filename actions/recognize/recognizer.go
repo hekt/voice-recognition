@@ -2,6 +2,7 @@ package recognize
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,22 +15,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const (
-	// streamTimeout はストリームのタイムアウト時間を表す。
-	// この時間を超えるとサーバー側からストリームが切断される。
-	streamTimeout = 5 * time.Minute
-
-	// streamTimeoutOffset はストリームのタイムアウト時間のオフセットを表す。
-	// この時間だけ短く設定することで、ストリームが切断される前に再接続を試みる。
-	streamTimeoutOffset = 10 * time.Second
-)
-
-type Recognizer struct {
+type recognizer struct {
 	projectID         string
 	recognizerName    string
 	outputFilePath    string
 	reconnectInterval time.Duration
+	bufferSize        int
 
+	// Speech-to-Text API のクライアント
 	client *speech.Client
 	// レスポンスデータを受信する channel
 	// stream から Recv する goroutine と、その結果を表示する goroutine で使う。
@@ -43,16 +36,26 @@ type Recognizer struct {
 	newStreamCh chan speechpb.Speech_StreamingRecognizeClient
 }
 
-func NewRecognizer(
+func newRecognizer(
 	ctx context.Context,
 	projectID, recognizerName, outputFilePath string,
+	bufferSize int,
 	reconnectInterval time.Duration,
-) (*Recognizer, error) {
-	if outputFilePath == "" {
-		outputFilePath = fmt.Sprintf("output-%d.txt", time.Now().Unix())
+) (*recognizer, error) {
+	if projectID == "" {
+		return nil, errors.New("project ID must be specified")
 	}
-	if reconnectInterval == 0 {
-		reconnectInterval = streamTimeout - streamTimeoutOffset
+	if recognizerName == "" {
+		return nil, errors.New("recognizer name must be specified")
+	}
+	if outputFilePath == "" {
+		return nil, errors.New("output file path must be specified")
+	}
+	if bufferSize < 1024 {
+		return nil, errors.New("buffer size must be greater than or equal to 1024")
+	}
+	if reconnectInterval < time.Minute {
+		return nil, errors.New("reconnect interval must be greater than or equal to 1 minute")
 	}
 
 	client, err := speech.NewClient(ctx)
@@ -60,11 +63,12 @@ func NewRecognizer(
 		return nil, fmt.Errorf("failed to create speech client: %w", err)
 	}
 
-	return &Recognizer{
+	return &recognizer{
 		projectID:         projectID,
 		recognizerName:    recognizerName,
 		outputFilePath:    outputFilePath,
 		reconnectInterval: reconnectInterval,
+		bufferSize:        bufferSize,
 
 		client:      client,
 		responseCh:  make(chan *speechpb.StreamingRecognizeResponse),
@@ -73,7 +77,7 @@ func NewRecognizer(
 	}, nil
 }
 
-func (r *Recognizer) Run(ctx context.Context) error {
+func (r *recognizer) Start(ctx context.Context) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
 	defer stop()
 
@@ -119,7 +123,7 @@ func (r *Recognizer) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Recognizer) startTimer(ctx context.Context) error {
+func (r *recognizer) startTimer(ctx context.Context) error {
 	timer := time.NewTimer(r.reconnectInterval)
 	defer timer.Stop()
 
@@ -135,7 +139,7 @@ func (r *Recognizer) startTimer(ctx context.Context) error {
 	}
 }
 
-func (r *Recognizer) startResponseProcessor(ctx context.Context) error {
+func (r *recognizer) startResponseProcessor(ctx context.Context) error {
 	var sb strings.Builder
 	var interimResult string
 	for {
@@ -186,13 +190,13 @@ func (r *Recognizer) startResponseProcessor(ctx context.Context) error {
 	}
 }
 
-func (r *Recognizer) startAudioSender(ctx context.Context) error {
+func (r *recognizer) startAudioSender(ctx context.Context) error {
 	stream, ok := <-r.newStreamCh
 	if !ok {
 		return fmt.Errorf("failed to get stream from channel")
 	}
 
-	buf := make([]byte, 8192)
+	buf := make([]byte, r.bufferSize)
 	for {
 		select {
 		case <-ctx.Done():
@@ -235,7 +239,7 @@ func (r *Recognizer) startAudioSender(ctx context.Context) error {
 	}
 }
 
-func (r *Recognizer) startResponseReceiver(ctx context.Context) error {
+func (r *recognizer) startResponseReceiver(ctx context.Context) error {
 	stream, ok := <-r.newStreamCh
 	if !ok {
 		return fmt.Errorf("failed to get stream from channel")
@@ -264,7 +268,7 @@ func (r *Recognizer) startResponseReceiver(ctx context.Context) error {
 	}
 }
 
-func (r *Recognizer) writeResultToFile(s string) error {
+func (r *recognizer) writeResultToFile(s string) error {
 	file, err := os.OpenFile(r.outputFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open file: %w", err)
@@ -278,7 +282,7 @@ func (r *Recognizer) writeResultToFile(s string) error {
 	return nil
 }
 
-func (r *Recognizer) initializeStream(
+func (r *recognizer) initializeStream(
 	ctx context.Context,
 ) (speechpb.Speech_StreamingRecognizeClient, error) {
 	stream, err := r.client.StreamingRecognize(ctx)

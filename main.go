@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/hekt/voice-recognition/actions/initialize"
 	"github.com/hekt/voice-recognition/actions/recognize"
@@ -20,7 +21,9 @@ func main() {
 		model string
 
 		// recognize
-		output string
+		output   string
+		interval time.Duration
+		buffer   int
 	)
 
 	generalFlags := []cli.Flag{
@@ -77,13 +80,28 @@ func main() {
 						Usage:       "Output file path",
 						Destination: &output,
 					},
+					&cli.DurationFlag{
+						Name:        "interval",
+						Usage:       "Reconnect interval duration",
+						Destination: &interval,
+					},
+					&cli.IntFlag{
+						Name:        "buffersize",
+						Usage:       "Buffer size bytes",
+						Destination: &buffer,
+					},
 				),
 				Action: func(c *cli.Context) error {
-					recognizer, err := recognize.NewRecognizer(c.Context, project, recognizer, output, 0)
-					if err != nil {
-						return err
-					}
-					return recognizer.Run(c.Context)
+					return recognize.Run(
+						c.Context,
+						recognize.Arg{
+							ProjectID:         project,
+							RecognizerName:    recognizer,
+							OutputFilePath:    output,
+							BufferSize:        buffer,
+							ReconnectInterval: interval,
+						},
+					)
 				},
 			},
 		},
