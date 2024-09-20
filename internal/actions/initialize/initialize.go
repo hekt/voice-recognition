@@ -8,7 +8,7 @@ import (
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 
-	"github.com/hekt/voice-recognition/util"
+	"github.com/hekt/voice-recognition/internal/util"
 )
 
 type Args struct {

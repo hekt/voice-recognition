@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/hekt/voice-recognition/actions/initialize"
-	"github.com/hekt/voice-recognition/actions/recognize"
+	"github.com/hekt/voice-recognition/internal/actions/initialize"
+	"github.com/hekt/voice-recognition/internal/actions/recognize"
 	"github.com/urfave/cli/v2"
 )
 

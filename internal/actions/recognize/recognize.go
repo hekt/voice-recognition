@@ -7,7 +7,7 @@ import (
 	"time"
 
 	speech "cloud.google.com/go/speech/apiv2"
-	"github.com/hekt/voice-recognition/file"
+	"github.com/hekt/voice-recognition/internal/file"
 )
 
 const (

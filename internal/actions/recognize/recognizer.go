@@ -15,8 +15,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/hekt/voice-recognition/speech"
-	"github.com/hekt/voice-recognition/util"
+	"github.com/hekt/voice-recognition/internal/util"
+	"github.com/hekt/voice-recognition/pkg/speech"
 )
 
 type recognizer struct {

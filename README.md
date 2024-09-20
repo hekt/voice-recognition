@@ -31,7 +31,7 @@ gcloud auth application-default login
 ### initialize の実行
 
 ```shell
-go run main.go initialize --project <project> --recognizer <recognizerName>
+go run cmd/main.go initialize --project <project> --recognizer <recognizerName>
 ```
 
 Google Cloud 上に `recognizerName` という名前の Recognizer が作成される。 `recognizerName` はなんでもいいが、実行時に同じものを指定する必要がある。
@@ -49,7 +49,7 @@ gst-launch-1.0 -q osxaudiosrc device=<deviceNo> \
 		! audio/x-raw,format=S16LE,channels=1,rate=16000 \
 		! queue \
 		! fdsink fd=1 sync=false blocksize=4096 \
-	| go run main.go recognize \
+	| go run cmd/main.go recognize \
    			--project <project> \
 			--recognizer <recognizerName> \
 			--buffersize 4096 \
