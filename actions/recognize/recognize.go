@@ -31,7 +31,7 @@ type Arg struct {
 func Run(ctx context.Context, arg Arg) error {
 	outputFilePath := arg.OutputFilePath
 	if outputFilePath == "" {
-		outputFilePath = fmt.Sprintf("output-%d.txt", time.Now().Unix())
+		outputFilePath = fmt.Sprintf("output/%d.txt", time.Now().Unix())
 	}
 
 	// 1KB未満は許容しない
