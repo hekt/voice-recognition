@@ -8,6 +8,7 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
 
+//go:generate moq -out audio_sender_mock.go . AudioSender
 type AudioSender interface {
 	Start(ctx context.Context) error
 }

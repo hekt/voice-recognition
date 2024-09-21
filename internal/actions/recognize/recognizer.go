@@ -54,6 +54,9 @@ func newRecognizer(
 	if reconnectInterval < time.Minute {
 		return nil, errors.New("reconnect interval must be greater than or equal to 1 minute")
 	}
+	if client == nil {
+		return nil, errors.New("client must be specified")
+	}
 	if audioReader == nil {
 		return nil, errors.New("audio reader must be specified")
 	}

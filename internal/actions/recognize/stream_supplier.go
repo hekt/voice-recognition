@@ -9,6 +9,7 @@ import (
 	"github.com/hekt/voice-recognition/pkg/speech"
 )
 
+//go:generate moq -out stream_supplier_mock.go . StreamSupplier
 type StreamSupplier interface {
 	// Supply はストリームを一度だけ提供する。
 	Supply(ctx context.Context) error
