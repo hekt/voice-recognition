@@ -1,36 +1,35 @@
-package initialize
+package speechrecognizer
 
 import (
 	"context"
 	"fmt"
-	"log"
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
-
 	"github.com/hekt/voice-recognition/internal/util"
 )
 
-type Args struct {
+type CreateArgs struct {
 	ProjectID      string
 	RecognizerName string
 	Model          string
+	LanguageCode   string
 }
 
-func Run(ctx context.Context, args Args) {
+func Create(ctx context.Context, args CreateArgs) error {
 	client, err := speech.NewClient(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("failed to create client: %w", err)
 	}
 
-	_, err = client.CreateRecognizer(ctx, &speechpb.CreateRecognizerRequest{
+	op, err := client.CreateRecognizer(ctx, &speechpb.CreateRecognizerRequest{
 		Parent:       util.RecognizerParent(args.ProjectID),
 		RecognizerId: args.RecognizerName,
 		Recognizer: &speechpb.Recognizer{
-			DisplayName: "default-recognizer",
+			DisplayName: args.RecognizerName,
 			DefaultRecognitionConfig: &speechpb.RecognitionConfig{
 				Model:         args.Model,
-				LanguageCodes: []string{"ja-jp"},
+				LanguageCodes: []string{args.LanguageCode},
 				DecodingConfig: &speechpb.RecognitionConfig_ExplicitDecodingConfig{
 					ExplicitDecodingConfig: &speechpb.ExplicitDecodingConfig{
 						Encoding:          speechpb.ExplicitDecodingConfig_LINEAR16,
@@ -42,7 +41,14 @@ func Run(ctx context.Context, args Args) {
 		},
 	})
 	if err != nil {
-		log.Fatal(err)
-		fmt.Printf("Failed to create recognizer: %v", err)
+		return fmt.Errorf("failed to create recognizer: %w", err)
 	}
+
+	if _, e := op.Wait(ctx); e != nil {
+		return fmt.Errorf("failed to wait for create operation: %w", e)
+	}
+
+	fmt.Println("Recognizer created")
+
+	return nil
 }

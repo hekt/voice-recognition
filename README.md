@@ -28,15 +28,18 @@ Google Cloud Speech-to-Text API を使っているためそのコストがかか
 gcloud auth application-default login
 ```
 
-### initialize の実行
+### Google Cloud 上に Recognizer を作成
 
 ```shell
-go run cmd/main.go initialize --project <project> --recognizer <recognizerName>
+go run cmd/main.go recognizer-create \
+	--project <project> \
+	--recognizer <recognizerName> \
+	--model long \
+	--language ja-jp
 ```
 
 Google Cloud 上に `recognizerName` という名前の Recognizer が作成される。 `recognizerName` はなんでもいいが、実行時に同じものを指定する必要がある。
 
-最初に1回やったっきりなので動かない可能性がある（高い）。そのうち確認する。
 
 ### recognize の実行
 
