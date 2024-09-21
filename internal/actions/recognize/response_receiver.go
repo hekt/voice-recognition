@@ -10,7 +10,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-//go:generate moq -out response_receiver_mock.go . ResponseReceiver
+//go:generate moq -rm -out response_receiver_mock.go . ResponseReceiver
 type ResponseReceiver interface {
 	Start(ctx context.Context) error
 }

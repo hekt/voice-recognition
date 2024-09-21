@@ -9,7 +9,7 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
 
-//go:generate moq -out response_processor_mock.go . ResponseProcessor
+//go:generate moq -rm -out response_processor_mock.go . ResponseProcessor
 type ResponseProcessor interface {
 	Start(ctx context.Context) error
 }
