@@ -3,6 +3,7 @@ package speech
 import (
 	"context"
 
+	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"github.com/googleapis/gax-go/v2"
 )
@@ -15,3 +16,5 @@ type Client interface {
 	StreamingRecognize(ctx context.Context, opts ...gax.CallOption) (speechpb.Speech_StreamingRecognizeClient, error)
 	Close() error
 }
+
+var _ Client = (*speech.Client)(nil)

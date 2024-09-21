@@ -65,7 +65,7 @@ func (s *audioSender) Start(ctx context.Context) error {
 			}
 			if err == io.EOF {
 				if e := stream.CloseSend(); err != nil {
-					return e
+					return fmt.Errorf("failed to close send direction of stream: %w", e)
 				}
 				return nil
 			}
