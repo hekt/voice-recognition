@@ -21,14 +21,15 @@ func NewFileWriter(path string, flag int, perm os.FileMode) *FileWriter {
 	return &FileWriter{path, flag, perm}
 }
 
-func (w *FileWriter) Write(p []byte) (n int, err error) {
+func (w *FileWriter) Write(p []byte) (int, error) {
 	file, err := os.OpenFile(w.path, w.flag, w.perm)
 	if err != nil {
 		return 0, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
 
-	if n, err := file.Write(p); err != nil {
+	n, err := file.Write(p)
+	if err != nil {
 		return n, fmt.Errorf("failed to write to file: %w", err)
 	}
 
