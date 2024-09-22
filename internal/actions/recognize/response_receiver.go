@@ -52,13 +52,15 @@ func (r *responseReceiver) Start(ctx context.Context) error {
 				stream = newStream
 				continue
 			}
+			if status.Code(err) == codes.Canceled {
+				// コマンドを SIGINT で終了した際に canceled が発生するため、無視して終了する。
+				// なお status.Code(err) は err が nil の場合は codes.OK を返す。
+				return nil
+			}
 			if err != nil {
-				// コマンドを SIGINT で終了した際に context canceled error が発生するため、無視する。
-				if status.Code(err) == codes.Canceled {
-					return nil
-				}
 				return fmt.Errorf("failed to receive response: %w", err)
 			}
+
 			r.responseCh <- resp
 		}
 	}

@@ -158,8 +158,8 @@ func Test_responseProcessor_Start(t *testing.T) {
 			responseCh: responseCh,
 		}
 
-		if got := p.Start(context.Background()); got != nil {
-			t.Errorf("Start() error = %v, want nil", got)
+		if got := p.Start(context.Background()); got == nil {
+			t.Error("Start() error = nil, want an error")
 		}
 	})
 }

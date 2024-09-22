@@ -48,29 +48,31 @@ func (s *audioSender) Start(ctx context.Context) error {
 			}
 			// 新しい stream が来たら古い stream を閉じて新しい stream に切り替える。
 			if err := stream.CloseSend(); err != nil {
-				return fmt.Errorf("failed to close send direction of stream: %w", err)
+				return fmt.Errorf("failed to close send direction of stream on reconnect: %w", err)
 			}
 			stream = newStream
 		default:
 			n, err := s.audioReader.Read(buf)
-			if n > 0 {
-				err := stream.Send(&speechpb.StreamingRecognizeRequest{
-					StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
-						Audio: buf[:n],
-					},
-				})
-				if err != nil {
-					return fmt.Errorf("failed to send audio data: %w", err)
-				}
-			}
 			if err == io.EOF {
 				if err := stream.CloseSend(); err != nil {
-					return fmt.Errorf("failed to close send direction of stream: %w", err)
+					return fmt.Errorf("failed to close send direction of stream on EOF: %w", err)
 				}
 				return nil
 			}
 			if err != nil {
 				return fmt.Errorf("failed to read from stdin: %w", err)
+			}
+
+			if n == 0 {
+				continue
+			}
+
+			if err := stream.Send(&speechpb.StreamingRecognizeRequest{
+				StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
+					Audio: buf[:n],
+				},
+			}); err != nil {
+				return fmt.Errorf("failed to send audio data: %w", err)
 			}
 		}
 	}

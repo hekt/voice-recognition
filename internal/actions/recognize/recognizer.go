@@ -120,16 +120,28 @@ func (r *recognizer) Start(ctx context.Context) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
-		return r.audioSender.Start(ctx)
+		if err := r.streamSupplier.Start(ctx); err != nil {
+			return fmt.Errorf("error occured in stream supplier: %w", err)
+		}
+		return nil
 	})
 	eg.Go(func() error {
-		return r.reseponseReceiver.Start(ctx)
+		if err := r.reseponseReceiver.Start(ctx); err != nil {
+			return fmt.Errorf("error occured in response receiver: %w", err)
+		}
+		return nil
 	})
 	eg.Go(func() error {
-		return r.responseProcessor.Start(ctx)
+		if err := r.audioSender.Start(ctx); err != nil {
+			return fmt.Errorf("error occured in audio sender: %w", err)
+		}
+		return nil
 	})
 	eg.Go(func() error {
-		return r.streamSupplier.Start(ctx)
+		if err := r.responseProcessor.Start(ctx); err != nil {
+			return fmt.Errorf("error occured in response processor: %w", err)
+		}
+		return nil
 	})
 
 	if err := eg.Wait(); err != nil {

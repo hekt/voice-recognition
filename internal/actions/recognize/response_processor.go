@@ -39,30 +39,33 @@ func (p *responseProcessor) Start(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			// 終了する前に確定していない中間結果を書き込む。
-			if len(interimResult) > 0 {
-				if _, err := p.resultWriter.Write(interimResult); err != nil {
-					return fmt.Errorf("failed to write interim result: %w", err)
-				}
+			if len(interimResult) == 0 {
+				return nil
+			}
+			if _, err := p.resultWriter.Write(interimResult); err != nil {
+				return fmt.Errorf("failed to write interim result: %w", err)
 			}
 			return nil
 		case resp, ok := <-p.responseCh:
 			if !ok {
-				return nil
+				return fmt.Errorf("failed to get response from channel")
 			}
 
 			// レスポンス処理
 			buf.Reset()
 			for _, result := range resp.Results {
 				s := result.Alternatives[0].Transcript
-				if result.IsFinal {
-					if _, err := p.resultWriter.Write([]byte(s)); err != nil {
-						return fmt.Errorf("failed to write result: %w", err)
-					}
-					interimResult = []byte{}
-					buf.Reset()
+
+				if !result.IsFinal {
+					buf.WriteString(s)
 					continue
 				}
-				buf.WriteString(s)
+
+				if _, err := p.resultWriter.Write([]byte(s)); err != nil {
+					return fmt.Errorf("failed to write result: %w", err)
+				}
+				interimResult = []byte{}
+				buf.Reset()
 			}
 
 			if buf.Len() == 0 {
