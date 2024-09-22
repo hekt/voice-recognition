@@ -40,15 +40,24 @@ func main() {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
+					options := []recognize.Option{}
+					if cCtx.IsSet("output") {
+						options = append(options, recognize.WithOutputFilePath(cCtx.String("output")))
+					}
+					if cCtx.IsSet("interval") {
+						options = append(options, recognize.WithReconnectInterval(cCtx.Duration("interval")))
+					}
+					if cCtx.IsSet("buffersize") {
+						options = append(options, recognize.WithBufferSize(cCtx.Int("buffersize")))
+					}
+
 					return recognize.Run(
 						cCtx.Context,
-						recognize.Arg{
-							ProjectID:         cCtx.String("project"),
-							RecognizerName:    cCtx.String("recognizer"),
-							OutputFilePath:    cCtx.String("output"),
-							BufferSize:        cCtx.Int("buffersize"),
-							ReconnectInterval: cCtx.Duration("interval"),
+						recognize.Args{
+							ProjectID:      cCtx.String("project"),
+							RecognizerName: cCtx.String("recognizer"),
 						},
+						options...,
 					)
 				},
 			},

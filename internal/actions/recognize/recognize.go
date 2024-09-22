@@ -20,35 +20,26 @@ const (
 	streamTimeoutOffset = 10 * time.Second
 )
 
-type Arg struct {
-	ProjectID         string
-	RecognizerName    string
-	OutputFilePath    string
-	BufferSize        int
-	ReconnectInterval time.Duration
+type Args struct {
+	ProjectID      string
+	RecognizerName string
 }
 
-func Run(ctx context.Context, arg Arg) error {
-	outputFilePath := arg.OutputFilePath
-	if outputFilePath == "" {
-		outputFilePath = fmt.Sprintf("output/%d.txt", time.Now().Unix())
+func Run(ctx context.Context, arg Args, opts ...Option) error {
+	options := &options{
+		outputFilePath:    fmt.Sprintf("output/%d.txt", time.Now().Unix()),
+		bufferSize:        1024,
+		reconnectInterval: streamTimeout - streamTimeoutOffset,
 	}
-
-	// 1KB未満は許容しない
-	bufferSize := arg.BufferSize
-	if bufferSize < 1024 {
-		bufferSize = 1024
-	}
-
-	// 1分未満は許容しない
-	reconnectInterval := arg.ReconnectInterval
-	if reconnectInterval < time.Minute {
-		reconnectInterval = streamTimeout - streamTimeoutOffset
+	for _, opt := range opts {
+		if err := opt(options); err != nil {
+			return fmt.Errorf("failed to apply option: %w", err)
+		}
 	}
 
 	audioReader := os.Stdin
 	resultWriter := file.NewFileWriter(
-		outputFilePath,
+		options.outputFilePath,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		0644,
 	)
@@ -62,8 +53,8 @@ func Run(ctx context.Context, arg Arg) error {
 	recognizer, err := newRecognizer(
 		arg.ProjectID,
 		arg.RecognizerName,
-		reconnectInterval,
-		bufferSize,
+		options.reconnectInterval,
+		options.bufferSize,
 		client,
 		audioReader,
 		resultWriter,
