@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	ispeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
@@ -96,6 +97,7 @@ func Test_audioSender_Start(t *testing.T) {
 		bufCh <- []byte("aaaaaaaaaaaaaaaa")
 		bufCh <- []byte("bbbbbbbbbbbbbbbb")
 		sendStreamCh <- stream2
+		time.Sleep(100 * time.Millisecond) // Wait for stream to be switched.
 		bufCh <- []byte("c")
 		eofCh <- struct{}{}
 
