@@ -38,7 +38,7 @@ func Run(ctx context.Context, arg Args, opts ...Option) error {
 	}
 
 	audioReader := os.Stdin
-	resultWriter := file.NewFileWriter(
+	resultWriter := file.NewOpenCloseFileWriter(
 		options.outputFilePath,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 		os.FileMode(0o644),

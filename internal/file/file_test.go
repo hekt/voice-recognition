@@ -8,28 +8,28 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestNewFileWriter(t *testing.T) {
+func TestNewOpenCloseFileWriter(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		path := "test.txt"
 		flag := os.O_CREATE
 		perm := os.FileMode(0o644)
 
-		want := &FileWriter{path, flag, perm}
-		got := NewFileWriter(path, flag, perm)
+		want := &OpenCloseFileWriter{path, flag, perm}
+		got := NewOpenCloseFileWriter(path, flag, perm)
 		if !reflect.DeepEqual(got, want) {
 			t.Errorf("NewFileWriter() = %v, want %v", got, want)
 		}
 	})
 }
 
-func TestFileWriter_Write(t *testing.T) {
+func TestOpenCloseFileWriter_Write(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dir := t.TempDir()
 		path := dir + "/test.txt"
 		flag := os.O_APPEND | os.O_CREATE | os.O_WRONLY
 		perm := os.FileMode(0o644)
 
-		w := &FileWriter{path, flag, perm}
+		w := &OpenCloseFileWriter{path, flag, perm}
 		p := []byte("test")
 
 		got, err := w.Write(p)
@@ -61,7 +61,7 @@ func TestFileWriter_Write(t *testing.T) {
 		flag := os.O_APPEND
 		perm := os.FileMode(0o644)
 
-		w := &FileWriter{path, flag, perm}
+		w := &OpenCloseFileWriter{path, flag, perm}
 		p := []byte("test")
 
 		_, err := w.Write(p)
@@ -76,7 +76,7 @@ func TestFileWriter_Write(t *testing.T) {
 		flag := os.O_CREATE | os.O_RDONLY
 		perm := os.FileMode(0o644)
 
-		w := &FileWriter{path, flag, perm}
+		w := &OpenCloseFileWriter{path, flag, perm}
 		p := []byte("test")
 
 		_, err := w.Write(p)

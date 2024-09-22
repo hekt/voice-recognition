@@ -6,22 +6,22 @@ import (
 	"os"
 )
 
-// FileWriter はファイルへの書き込みを行う構造体。
+// OpenCloseFileWriter はファイルへの書き込みを行う構造体。
 // io.Writer インターフェースを実装している。
 // Write() メソッドが実行されるたびにファイルを開き、書き込みを行う。
-type FileWriter struct {
+type OpenCloseFileWriter struct {
 	path string
 	flag int
 	perm os.FileMode
 }
 
-var _ io.Writer = (*FileWriter)(nil)
+var _ io.Writer = (*OpenCloseFileWriter)(nil)
 
-func NewFileWriter(path string, flag int, perm os.FileMode) *FileWriter {
-	return &FileWriter{path, flag, perm}
+func NewOpenCloseFileWriter(path string, flag int, perm os.FileMode) *OpenCloseFileWriter {
+	return &OpenCloseFileWriter{path, flag, perm}
 }
 
-func (w *FileWriter) Write(p []byte) (int, error) {
+func (w *OpenCloseFileWriter) Write(p []byte) (int, error) {
 	file, err := os.OpenFile(w.path, w.flag, w.perm)
 	if err != nil {
 		return 0, fmt.Errorf("failed to open file: %w", err)
