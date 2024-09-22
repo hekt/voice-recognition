@@ -3,6 +3,7 @@ package recognize
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
@@ -49,6 +50,8 @@ func NewStreamSupplier(
 }
 
 func (s *StreamSupplier) Start(ctx context.Context) error {
+	slog.Debug("StreamSupplier: start")
+
 	timer := time.NewTimer(s.supplyInterval)
 	defer timer.Stop()
 
@@ -57,6 +60,8 @@ func (s *StreamSupplier) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-timer.C:
+			slog.Debug("StreamSupplier: timer fired")
+
 			newStream, err := s.initializeStream(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to initialize stream: %w", err)
@@ -75,6 +80,8 @@ func (s *StreamSupplier) Start(ctx context.Context) error {
 			case <-ctx.Done():
 				return nil
 			}
+
+			slog.Debug("StreamSupplier: stream supplied")
 		}
 	}
 }

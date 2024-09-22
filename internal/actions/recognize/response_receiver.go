@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"google.golang.org/grpc/codes"
@@ -33,6 +34,8 @@ func NewResponseReceiver(
 }
 
 func (r *ResponseReceiver) Start(ctx context.Context) error {
+	slog.Debug("ResponseReceiver: start")
+
 	stream, ok := <-r.receiveStreamCh
 	if !ok {
 		return fmt.Errorf("failed to get receive stream from channel")
@@ -45,13 +48,17 @@ func (r *ResponseReceiver) Start(ctx context.Context) error {
 		default:
 			resp, err := stream.Recv()
 			if err == io.EOF {
+				slog.Debug("ResponseReceiver: EOF received")
+
 				// 送信側で stream が閉じられると、受信側は最後のレスポンスのあと EOF を受信する。
 				// そのタイミングで新しい stream に切り替える。
 				newStream, ok := <-r.receiveStreamCh
 				if !ok {
 					return fmt.Errorf("failed to get new receive stream from channel")
 				}
+
 				stream = newStream
+				slog.Debug("ResponseReceiver: stream switched")
 				continue
 			}
 			if status.Code(err) == codes.Canceled {

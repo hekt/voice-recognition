@@ -1,11 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
+	"log/slog"
 	"os"
+	"time"
 
 	"github.com/hekt/voice-recognition/internal/actions/manage"
 	"github.com/hekt/voice-recognition/internal/actions/recognize"
+	"github.com/hekt/voice-recognition/internal/logger"
 	"github.com/urfave/cli/v2"
 )
 
@@ -38,8 +42,19 @@ func main() {
 						Name:  "buffersize",
 						Usage: "Buffer size bytes",
 					},
+					&cli.BoolFlag{
+						Name:  "debug",
+						Usage: "Enable debug log",
+						Value: false,
+					},
 				},
 				Action: func(cCtx *cli.Context) error {
+					if cCtx.Bool("debug") {
+						if err := setLogger(slog.LevelDebug); err != nil {
+							return fmt.Errorf("failed to set logger: %w", err)
+						}
+					}
+
 					options := make([]recognize.Option, 0, 3)
 					if cCtx.IsSet("output") {
 						options = append(options, recognize.WithOutputFilePath(cCtx.String("output")))
@@ -142,4 +157,16 @@ func main() {
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func setLogger(level slog.Level) error {
+	logger, err := logger.NewFileLogger(
+		fmt.Sprintf("output/log-%d.log", time.Now().Unix()),
+		level,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create logger: %w", err)
+	}
+	slog.SetDefault(logger)
+	return nil
 }

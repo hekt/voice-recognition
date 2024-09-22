@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
@@ -34,6 +35,8 @@ func NewAudioSender(
 }
 
 func (s *AudioSender) Start(ctx context.Context) error {
+	slog.Debug("AudioSender: start")
+
 	stream, ok := <-s.sendStreamCh
 	if !ok {
 		return fmt.Errorf("failed to get send stream from channel")
@@ -48,14 +51,19 @@ func (s *AudioSender) Start(ctx context.Context) error {
 			if !ok {
 				return fmt.Errorf("failed to get new send stream from channel")
 			}
+			slog.Debug("AudioSender: new stream received")
+
 			// 新しい stream が来たら古い stream を閉じて新しい stream に切り替える。
 			if err := stream.CloseSend(); err != nil {
 				return fmt.Errorf("failed to close send direction of stream on reconnect: %w", err)
 			}
+
 			stream = newStream
+			slog.Debug("AudioSender: stream switched")
 		default:
 			n, err := s.audioReader.Read(buf)
 			if err == io.EOF {
+				slog.Debug("AudioSender: EOF received")
 				if err := stream.CloseSend(); err != nil {
 					return fmt.Errorf("failed to close send direction of stream on EOF: %w", err)
 				}

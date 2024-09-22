@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/signal"
 	"time"
@@ -103,6 +104,8 @@ func newRecognizer(
 }
 
 func (r *recognizer) Start(ctx context.Context) error {
+	slog.Debug("recognizer started")
+
 	defer func() {
 		r.client.Close()
 		close(r.responseCh)
@@ -147,6 +150,8 @@ func (r *recognizer) Start(ctx context.Context) error {
 	if err := eg.Wait(); err != nil {
 		return err
 	}
+
+	slog.Debug("recognizer stopped")
 
 	return nil
 }

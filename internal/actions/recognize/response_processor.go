@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
@@ -35,6 +36,8 @@ func NewResponseProcessor(
 }
 
 func (p *ResponseProcessor) Start(ctx context.Context) error {
+	slog.Debug("ResponseProcessor: start")
+
 	var buf bytes.Buffer
 	var interimResult []byte
 	for {
@@ -47,6 +50,8 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 			if _, err := p.resultWriter.Write(interimResult); err != nil {
 				return fmt.Errorf("failed to write interim result: %w", err)
 			}
+			slog.Debug("ResponseProcessor: interim result written")
+
 			return nil
 		case resp, ok := <-p.responseCh:
 			if !ok {
@@ -62,6 +67,8 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 					buf.WriteString(s)
 					continue
 				}
+
+				slog.Debug("ResponseProcessor: final result received")
 
 				if _, err := p.resultWriter.Write([]byte(s)); err != nil {
 					return fmt.Errorf("failed to write result: %w", err)
