@@ -17,7 +17,7 @@ Google Cloud Speech-to-Text API を使っているためそのコストがかか
 
 ### Mac のオーディオ設定
 
-1. Audio MIDI 設定から出力 Format を 16000Hz に変更する
+1. Audio MIDI 設定から BalckHole 2ch の出力 Format を 16000Hz に変更する
     - gstreamer での再サンプル処理を省いて高速化するため
 2. 音声の出力先に BlackHole 2ch を指定する
     - これだけだと音を聴けないので、必要に応じて Audio MIDI 設定で BlackHole 2ch を含む複数出力装置を作成し、それを出力先にする
