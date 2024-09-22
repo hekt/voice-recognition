@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	pkgspeechpb "github.com/hekt/voice-recognition/pkg/speechpb"
+	ispeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -42,7 +42,7 @@ func Test_responseReceiver_Start(t *testing.T) {
 			{nil, io.EOF},
 			{nil, errors.New("unexpected error")}, // ハンドリングができていればこのレスポンスは取得されない
 		}
-		stream1 := &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+		stream1 := &ispeechpb.Speech_StreamingRecognizeClientMock{
 			RecvFunc: func() (*speechpb.StreamingRecognizeResponse, error) {
 				if stream1RecvCalls > len(stream1Responses) {
 					t.Fatalf("unexpected call to Recv on stream1: %d", stream1RecvCalls)
@@ -58,7 +58,7 @@ func Test_responseReceiver_Start(t *testing.T) {
 			{&speechpb.StreamingRecognizeResponse{}, nil},
 			{nil, status.Error(codes.Canceled, "canceled")},
 		}
-		stream2 := &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+		stream2 := &ispeechpb.Speech_StreamingRecognizeClientMock{
 			RecvFunc: func() (*speechpb.StreamingRecognizeResponse, error) {
 				if stream2RecvCalls > len(stream2Responses) {
 					t.Fatalf("unexpected call to Recv on stream2: %d", stream2RecvCalls)

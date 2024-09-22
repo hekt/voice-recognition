@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	"github.com/hekt/voice-recognition/pkg/speech"
+	"github.com/hekt/voice-recognition/internal/interfaces/speech"
 )
 
 //go:generate moq -rm -out stream_supplier_mock.go . StreamSupplierInterface

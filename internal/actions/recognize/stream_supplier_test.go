@@ -11,14 +11,14 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"github.com/google/go-cmp/cmp"
 	"github.com/googleapis/gax-go/v2"
-	pkgspeech "github.com/hekt/voice-recognition/pkg/speech"
-	pkgspeechpb "github.com/hekt/voice-recognition/pkg/speechpb"
+	ispeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
+	ispeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestNewStreamSupplier(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		client := &pkgspeech.ClientMock{}
+		client := &ispeech.ClientMock{}
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
 		recognizerFullName := "projects/test-project/locations/global/recognizers/test-recognizer"
@@ -45,12 +45,12 @@ func Test_streamSupplier_Start(t *testing.T) {
 		defer cancel()
 
 		// initializeStream で使われる
-		stream := &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+		stream := &ispeechpb.Speech_StreamingRecognizeClientMock{
 			SendFunc: func(_ *speechpb.StreamingRecognizeRequest) error {
 				return nil
 			},
 		}
-		client := &pkgspeech.ClientMock{
+		client := &ispeech.ClientMock{
 			StreamingRecognizeFunc: func(
 				_ context.Context,
 				_ ...gax.CallOption,
@@ -110,7 +110,7 @@ func Test_streamSupplier_Start(t *testing.T) {
 
 	t.Run("initializeStream error", func(t *testing.T) {
 		// initializeStream で使われる
-		client := &pkgspeech.ClientMock{
+		client := &ispeech.ClientMock{
 			StreamingRecognizeFunc: func(
 				_ context.Context,
 				_ ...gax.CallOption,
@@ -132,12 +132,12 @@ func Test_streamSupplier_Start(t *testing.T) {
 func Test_streamSupplier_Supply(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		// initializeStream で使われる
-		stream := &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+		stream := &ispeechpb.Speech_StreamingRecognizeClientMock{
 			SendFunc: func(_ *speechpb.StreamingRecognizeRequest) error {
 				return nil
 			},
 		}
-		client := &pkgspeech.ClientMock{
+		client := &ispeech.ClientMock{
 			StreamingRecognizeFunc: func(
 				_ context.Context,
 				_ ...gax.CallOption,
@@ -168,12 +168,12 @@ func Test_streamSupplier_Supply(t *testing.T) {
 
 	t.Run("buffer is full", func(t *testing.T) {
 		// initializeStream で使われる
-		stream := &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+		stream := &ispeechpb.Speech_StreamingRecognizeClientMock{
 			SendFunc: func(_ *speechpb.StreamingRecognizeRequest) error {
 				return nil
 			},
 		}
-		client := &pkgspeech.ClientMock{
+		client := &ispeech.ClientMock{
 			StreamingRecognizeFunc: func(
 				_ context.Context,
 				_ ...gax.CallOption,
@@ -230,12 +230,12 @@ func Test_streamSupplier_Supply(t *testing.T) {
 
 	t.Run("context canceled", func(t *testing.T) {
 		// initializeStream で使われる
-		stream := &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+		stream := &ispeechpb.Speech_StreamingRecognizeClientMock{
 			SendFunc: func(_ *speechpb.StreamingRecognizeRequest) error {
 				return nil
 			},
 		}
-		client := &pkgspeech.ClientMock{
+		client := &ispeech.ClientMock{
 			StreamingRecognizeFunc: func(
 				_ context.Context,
 				_ ...gax.CallOption,
@@ -282,7 +282,7 @@ func Test_streamSupplier_initializeStream(t *testing.T) {
 	recognizer := "projects/test-project/locations/global/recognizers/test-recognizer"
 
 	type fields struct {
-		client             pkgspeech.Client
+		client             ispeech.Client
 		recognizerFullName string
 	}
 	type test struct {
@@ -294,7 +294,7 @@ func Test_streamSupplier_initializeStream(t *testing.T) {
 	tests := []test{
 		// success
 		func() test {
-			stream := &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+			stream := &ispeechpb.Speech_StreamingRecognizeClientMock{
 				SendFunc: func(
 					req *speechpb.StreamingRecognizeRequest,
 				) error {
@@ -319,7 +319,7 @@ func Test_streamSupplier_initializeStream(t *testing.T) {
 					return nil
 				},
 			}
-			client := &pkgspeech.ClientMock{
+			client := &ispeech.ClientMock{
 				StreamingRecognizeFunc: func(
 					_ context.Context,
 					_ ...gax.CallOption,
@@ -339,7 +339,7 @@ func Test_streamSupplier_initializeStream(t *testing.T) {
 		}(),
 		// client initialization error
 		func() test {
-			client := &pkgspeech.ClientMock{
+			client := &ispeech.ClientMock{
 				StreamingRecognizeFunc: func(
 					_ context.Context,
 					_ ...gax.CallOption,
@@ -359,14 +359,14 @@ func Test_streamSupplier_initializeStream(t *testing.T) {
 		}(),
 		// stream send error
 		func() test {
-			stream := &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+			stream := &ispeechpb.Speech_StreamingRecognizeClientMock{
 				SendFunc: func(
 					_ *speechpb.StreamingRecognizeRequest,
 				) error {
 					return errors.New("test")
 				},
 			}
-			client := &pkgspeech.ClientMock{
+			client := &ispeech.ClientMock{
 				StreamingRecognizeFunc: func(
 					_ context.Context,
 					_ ...gax.CallOption,

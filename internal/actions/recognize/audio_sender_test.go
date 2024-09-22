@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	pkgspeechpb "github.com/hekt/voice-recognition/pkg/speechpb"
+	ispeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
 )
 
 func TestNewAudioSender(t *testing.T) {
@@ -52,8 +52,8 @@ var _ io.Reader = &audioSenderTestReader{}
 func Test_audioSender_Start(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		sentBuf := bytes.Buffer{}
-		crateStreamMock := func() *pkgspeechpb.Speech_StreamingRecognizeClientMock {
-			return &pkgspeechpb.Speech_StreamingRecognizeClientMock{
+		crateStreamMock := func() *ispeechpb.Speech_StreamingRecognizeClientMock {
+			return &ispeechpb.Speech_StreamingRecognizeClientMock{
 				SendFunc: func(req *speechpb.StreamingRecognizeRequest) error {
 					audioReq, ok := req.StreamingRequest.(*speechpb.StreamingRecognizeRequest_Audio)
 					if !ok {
