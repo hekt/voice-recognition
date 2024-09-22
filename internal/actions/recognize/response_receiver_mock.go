@@ -8,26 +8,26 @@ import (
 	"sync"
 )
 
-// Ensure, that ResponseReceiverMock does implement ResponseReceiver.
+// Ensure, that ResponseReceiverInterfaceMock does implement ResponseReceiverInterface.
 // If this is not the case, regenerate this file with moq.
-var _ ResponseReceiver = &ResponseReceiverMock{}
+var _ ResponseReceiverInterface = &ResponseReceiverInterfaceMock{}
 
-// ResponseReceiverMock is a mock implementation of ResponseReceiver.
+// ResponseReceiverInterfaceMock is a mock implementation of ResponseReceiverInterface.
 //
-//	func TestSomethingThatUsesResponseReceiver(t *testing.T) {
+//	func TestSomethingThatUsesResponseReceiverInterface(t *testing.T) {
 //
-//		// make and configure a mocked ResponseReceiver
-//		mockedResponseReceiver := &ResponseReceiverMock{
+//		// make and configure a mocked ResponseReceiverInterface
+//		mockedResponseReceiverInterface := &ResponseReceiverInterfaceMock{
 //			StartFunc: func(ctx context.Context) error {
 //				panic("mock out the Start method")
 //			},
 //		}
 //
-//		// use mockedResponseReceiver in code that requires ResponseReceiver
+//		// use mockedResponseReceiverInterface in code that requires ResponseReceiverInterface
 //		// and then make assertions.
 //
 //	}
-type ResponseReceiverMock struct {
+type ResponseReceiverInterfaceMock struct {
 	// StartFunc mocks the Start method.
 	StartFunc func(ctx context.Context) error
 
@@ -43,9 +43,9 @@ type ResponseReceiverMock struct {
 }
 
 // Start calls StartFunc.
-func (mock *ResponseReceiverMock) Start(ctx context.Context) error {
+func (mock *ResponseReceiverInterfaceMock) Start(ctx context.Context) error {
 	if mock.StartFunc == nil {
-		panic("ResponseReceiverMock.StartFunc: method is nil but ResponseReceiver.Start was just called")
+		panic("ResponseReceiverInterfaceMock.StartFunc: method is nil but ResponseReceiverInterface.Start was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -61,8 +61,8 @@ func (mock *ResponseReceiverMock) Start(ctx context.Context) error {
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
 //
-//	len(mockedResponseReceiver.StartCalls())
-func (mock *ResponseReceiverMock) StartCalls() []struct {
+//	len(mockedResponseReceiverInterface.StartCalls())
+func (mock *ResponseReceiverInterfaceMock) StartCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {

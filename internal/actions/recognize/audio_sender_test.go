@@ -18,7 +18,7 @@ func TestNewAudioSender(t *testing.T) {
 		audioReader := &bytes.Buffer{}
 		s := NewAudioSender(audioReader, sendStreamCh, 1024)
 
-		want := &audioSender{
+		want := &AudioSender{
 			audioReader:  audioReader,
 			sendStreamCh: sendStreamCh,
 			bufferSize:   1024,
@@ -78,7 +78,7 @@ func Test_audioSender_Start(t *testing.T) {
 		}
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 2)
 
-		s := &audioSender{
+		s := &AudioSender{
 			audioReader:  audioReader,
 			sendStreamCh: sendStreamCh,
 			bufferSize:   16,
@@ -124,7 +124,7 @@ func Test_audioSender_Start(t *testing.T) {
 
 	t.Run("closed stream", func(t *testing.T) {
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
-		s := &audioSender{
+		s := &AudioSender{
 			sendStreamCh: sendStreamCh,
 		}
 		close(sendStreamCh)

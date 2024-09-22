@@ -8,26 +8,26 @@ import (
 	"sync"
 )
 
-// Ensure, that AudioSenderMock does implement AudioSender.
+// Ensure, that AudioSenderInterfaceMock does implement AudioSenderInterface.
 // If this is not the case, regenerate this file with moq.
-var _ AudioSender = &AudioSenderMock{}
+var _ AudioSenderInterface = &AudioSenderInterfaceMock{}
 
-// AudioSenderMock is a mock implementation of AudioSender.
+// AudioSenderInterfaceMock is a mock implementation of AudioSenderInterface.
 //
-//	func TestSomethingThatUsesAudioSender(t *testing.T) {
+//	func TestSomethingThatUsesAudioSenderInterface(t *testing.T) {
 //
-//		// make and configure a mocked AudioSender
-//		mockedAudioSender := &AudioSenderMock{
+//		// make and configure a mocked AudioSenderInterface
+//		mockedAudioSenderInterface := &AudioSenderInterfaceMock{
 //			StartFunc: func(ctx context.Context) error {
 //				panic("mock out the Start method")
 //			},
 //		}
 //
-//		// use mockedAudioSender in code that requires AudioSender
+//		// use mockedAudioSenderInterface in code that requires AudioSenderInterface
 //		// and then make assertions.
 //
 //	}
-type AudioSenderMock struct {
+type AudioSenderInterfaceMock struct {
 	// StartFunc mocks the Start method.
 	StartFunc func(ctx context.Context) error
 
@@ -43,9 +43,9 @@ type AudioSenderMock struct {
 }
 
 // Start calls StartFunc.
-func (mock *AudioSenderMock) Start(ctx context.Context) error {
+func (mock *AudioSenderInterfaceMock) Start(ctx context.Context) error {
 	if mock.StartFunc == nil {
-		panic("AudioSenderMock.StartFunc: method is nil but AudioSender.Start was just called")
+		panic("AudioSenderInterfaceMock.StartFunc: method is nil but AudioSenderInterface.Start was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -61,8 +61,8 @@ func (mock *AudioSenderMock) Start(ctx context.Context) error {
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
 //
-//	len(mockedAudioSender.StartCalls())
-func (mock *AudioSenderMock) StartCalls() []struct {
+//	len(mockedAudioSenderInterface.StartCalls())
+func (mock *AudioSenderInterfaceMock) StartCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {

@@ -8,26 +8,26 @@ import (
 	"sync"
 )
 
-// Ensure, that ResponseProcessorMock does implement ResponseProcessor.
+// Ensure, that ResponseProcessorInterfaceMock does implement ResponseProcessorInterface.
 // If this is not the case, regenerate this file with moq.
-var _ ResponseProcessor = &ResponseProcessorMock{}
+var _ ResponseProcessorInterface = &ResponseProcessorInterfaceMock{}
 
-// ResponseProcessorMock is a mock implementation of ResponseProcessor.
+// ResponseProcessorInterfaceMock is a mock implementation of ResponseProcessorInterface.
 //
-//	func TestSomethingThatUsesResponseProcessor(t *testing.T) {
+//	func TestSomethingThatUsesResponseProcessorInterface(t *testing.T) {
 //
-//		// make and configure a mocked ResponseProcessor
-//		mockedResponseProcessor := &ResponseProcessorMock{
+//		// make and configure a mocked ResponseProcessorInterface
+//		mockedResponseProcessorInterface := &ResponseProcessorInterfaceMock{
 //			StartFunc: func(ctx context.Context) error {
 //				panic("mock out the Start method")
 //			},
 //		}
 //
-//		// use mockedResponseProcessor in code that requires ResponseProcessor
+//		// use mockedResponseProcessorInterface in code that requires ResponseProcessorInterface
 //		// and then make assertions.
 //
 //	}
-type ResponseProcessorMock struct {
+type ResponseProcessorInterfaceMock struct {
 	// StartFunc mocks the Start method.
 	StartFunc func(ctx context.Context) error
 
@@ -43,9 +43,9 @@ type ResponseProcessorMock struct {
 }
 
 // Start calls StartFunc.
-func (mock *ResponseProcessorMock) Start(ctx context.Context) error {
+func (mock *ResponseProcessorInterfaceMock) Start(ctx context.Context) error {
 	if mock.StartFunc == nil {
-		panic("ResponseProcessorMock.StartFunc: method is nil but ResponseProcessor.Start was just called")
+		panic("ResponseProcessorInterfaceMock.StartFunc: method is nil but ResponseProcessorInterface.Start was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -61,8 +61,8 @@ func (mock *ResponseProcessorMock) Start(ctx context.Context) error {
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
 //
-//	len(mockedResponseProcessor.StartCalls())
-func (mock *ResponseProcessorMock) StartCalls() []struct {
+//	len(mockedResponseProcessorInterface.StartCalls())
+func (mock *ResponseProcessorInterfaceMock) StartCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {

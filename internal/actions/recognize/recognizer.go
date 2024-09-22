@@ -17,10 +17,10 @@ import (
 )
 
 type recognizer struct {
-	streamSupplier    StreamSupplier
-	audioSender       AudioSender
-	reseponseReceiver ResponseReceiver
-	responseProcessor ResponseProcessor
+	streamSupplier    StreamSupplierInterface
+	audioSender       AudioSenderInterface
+	reseponseReceiver ResponseReceiverInterface
+	responseProcessor ResponseProcessorInterface
 
 	// client は Speech-to-Text API のクライアント。
 	client speech.Client

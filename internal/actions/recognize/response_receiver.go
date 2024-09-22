@@ -10,12 +10,14 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-//go:generate moq -rm -out response_receiver_mock.go . ResponseReceiver
-type ResponseReceiver interface {
+//go:generate moq -rm -out response_receiver_mock.go . ResponseReceiverInterface
+type ResponseReceiverInterface interface {
 	Start(ctx context.Context) error
 }
 
-type responseReceiver struct {
+var _ ResponseReceiverInterface = (*ResponseReceiver)(nil)
+
+type ResponseReceiver struct {
 	responseCh      chan<- *speechpb.StreamingRecognizeResponse
 	receiveStreamCh <-chan speechpb.Speech_StreamingRecognizeClient
 }
@@ -23,14 +25,14 @@ type responseReceiver struct {
 func NewResponseReceiver(
 	responseCh chan<- *speechpb.StreamingRecognizeResponse,
 	receiveStreamCh <-chan speechpb.Speech_StreamingRecognizeClient,
-) ResponseReceiver {
-	return &responseReceiver{
+) *ResponseReceiver {
+	return &ResponseReceiver{
 		responseCh:      responseCh,
 		receiveStreamCh: receiveStreamCh,
 	}
 }
 
-func (r *responseReceiver) Start(ctx context.Context) error {
+func (r *ResponseReceiver) Start(ctx context.Context) error {
 	stream, ok := <-r.receiveStreamCh
 	if !ok {
 		return fmt.Errorf("failed to get receive stream from channel")

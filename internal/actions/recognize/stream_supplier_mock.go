@@ -8,16 +8,16 @@ import (
 	"sync"
 )
 
-// Ensure, that StreamSupplierMock does implement StreamSupplier.
+// Ensure, that StreamSupplierInterfaceMock does implement StreamSupplierInterface.
 // If this is not the case, regenerate this file with moq.
-var _ StreamSupplier = &StreamSupplierMock{}
+var _ StreamSupplierInterface = &StreamSupplierInterfaceMock{}
 
-// StreamSupplierMock is a mock implementation of StreamSupplier.
+// StreamSupplierInterfaceMock is a mock implementation of StreamSupplierInterface.
 //
-//	func TestSomethingThatUsesStreamSupplier(t *testing.T) {
+//	func TestSomethingThatUsesStreamSupplierInterface(t *testing.T) {
 //
-//		// make and configure a mocked StreamSupplier
-//		mockedStreamSupplier := &StreamSupplierMock{
+//		// make and configure a mocked StreamSupplierInterface
+//		mockedStreamSupplierInterface := &StreamSupplierInterfaceMock{
 //			StartFunc: func(ctx context.Context) error {
 //				panic("mock out the Start method")
 //			},
@@ -26,11 +26,11 @@ var _ StreamSupplier = &StreamSupplierMock{}
 //			},
 //		}
 //
-//		// use mockedStreamSupplier in code that requires StreamSupplier
+//		// use mockedStreamSupplierInterface in code that requires StreamSupplierInterface
 //		// and then make assertions.
 //
 //	}
-type StreamSupplierMock struct {
+type StreamSupplierInterfaceMock struct {
 	// StartFunc mocks the Start method.
 	StartFunc func(ctx context.Context) error
 
@@ -55,9 +55,9 @@ type StreamSupplierMock struct {
 }
 
 // Start calls StartFunc.
-func (mock *StreamSupplierMock) Start(ctx context.Context) error {
+func (mock *StreamSupplierInterfaceMock) Start(ctx context.Context) error {
 	if mock.StartFunc == nil {
-		panic("StreamSupplierMock.StartFunc: method is nil but StreamSupplier.Start was just called")
+		panic("StreamSupplierInterfaceMock.StartFunc: method is nil but StreamSupplierInterface.Start was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -73,8 +73,8 @@ func (mock *StreamSupplierMock) Start(ctx context.Context) error {
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
 //
-//	len(mockedStreamSupplier.StartCalls())
-func (mock *StreamSupplierMock) StartCalls() []struct {
+//	len(mockedStreamSupplierInterface.StartCalls())
+func (mock *StreamSupplierInterfaceMock) StartCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {
@@ -87,9 +87,9 @@ func (mock *StreamSupplierMock) StartCalls() []struct {
 }
 
 // Supply calls SupplyFunc.
-func (mock *StreamSupplierMock) Supply(ctx context.Context) error {
+func (mock *StreamSupplierInterfaceMock) Supply(ctx context.Context) error {
 	if mock.SupplyFunc == nil {
-		panic("StreamSupplierMock.SupplyFunc: method is nil but StreamSupplier.Supply was just called")
+		panic("StreamSupplierInterfaceMock.SupplyFunc: method is nil but StreamSupplierInterface.Supply was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -105,8 +105,8 @@ func (mock *StreamSupplierMock) Supply(ctx context.Context) error {
 // SupplyCalls gets all the calls that were made to Supply.
 // Check the length with:
 //
-//	len(mockedStreamSupplier.SupplyCalls())
-func (mock *StreamSupplierMock) SupplyCalls() []struct {
+//	len(mockedStreamSupplierInterface.SupplyCalls())
+func (mock *StreamSupplierInterfaceMock) SupplyCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {

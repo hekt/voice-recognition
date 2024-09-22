@@ -180,10 +180,10 @@ func Test_newRecognizer(t *testing.T) {
 
 func Test_recognizer_Start(t *testing.T) {
 	type fields struct {
-		streamSupplier    StreamSupplier
-		audioSender       AudioSender
-		reseponseReceiver ResponseReceiver
-		responseProcessor ResponseProcessor
+		streamSupplier    StreamSupplierInterface
+		audioSender       AudioSenderInterface
+		reseponseReceiver ResponseReceiverInterface
+		responseProcessor ResponseProcessorInterface
 		client            speech.Client
 		responseCh        chan *speechpb.StreamingRecognizeResponse
 		sendStreamCh      chan speechpb.Speech_StreamingRecognizeClient
@@ -197,7 +197,7 @@ func Test_recognizer_Start(t *testing.T) {
 		{
 			name: "success",
 			fields: fields{
-				streamSupplier: &StreamSupplierMock{
+				streamSupplier: &StreamSupplierInterfaceMock{
 					SupplyFunc: func(ctx context.Context) error {
 						return nil
 					},
@@ -205,17 +205,17 @@ func Test_recognizer_Start(t *testing.T) {
 						return nil
 					},
 				},
-				audioSender: &AudioSenderMock{
+				audioSender: &AudioSenderInterfaceMock{
 					StartFunc: func(ctx context.Context) error {
 						return nil
 					},
 				},
-				reseponseReceiver: &ResponseReceiverMock{
+				reseponseReceiver: &ResponseReceiverInterfaceMock{
 					StartFunc: func(ctx context.Context) error {
 						return nil
 					},
 				},
-				responseProcessor: &ResponseProcessorMock{
+				responseProcessor: &ResponseProcessorInterfaceMock{
 					StartFunc: func(ctx context.Context) error {
 						return nil
 					},
@@ -234,7 +234,7 @@ func Test_recognizer_Start(t *testing.T) {
 		{
 			name: "failed to start stream supplier",
 			fields: fields{
-				streamSupplier: &StreamSupplierMock{
+				streamSupplier: &StreamSupplierInterfaceMock{
 					SupplyFunc: func(ctx context.Context) error {
 						return nil
 					},
@@ -242,17 +242,17 @@ func Test_recognizer_Start(t *testing.T) {
 						return errors.New("test error")
 					},
 				},
-				audioSender: &AudioSenderMock{
+				audioSender: &AudioSenderInterfaceMock{
 					StartFunc: func(ctx context.Context) error {
 						return nil
 					},
 				},
-				reseponseReceiver: &ResponseReceiverMock{
+				reseponseReceiver: &ResponseReceiverInterfaceMock{
 					StartFunc: func(ctx context.Context) error {
 						return nil
 					},
 				},
-				responseProcessor: &ResponseProcessorMock{
+				responseProcessor: &ResponseProcessorInterfaceMock{
 					StartFunc: func(ctx context.Context) error {
 						return nil
 					},

@@ -25,7 +25,7 @@ func TestNewStreamSupplier(t *testing.T) {
 		supplyInterval := 5 * time.Minute
 
 		got := NewStreamSupplier(client, sendStreamCh, receiveStreamCh, recognizerFullName, supplyInterval)
-		want := &streamSupplier{
+		want := &StreamSupplier{
 			client:             client,
 			sendStreamCh:       sendStreamCh,
 			receiveStreamCh:    receiveStreamCh,
@@ -64,7 +64,7 @@ func Test_streamSupplier_Start(t *testing.T) {
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 
-		s := &streamSupplier{
+		s := &StreamSupplier{
 			client:          client,
 			supplyInterval:  10 * time.Millisecond,
 			sendStreamCh:    sendStreamCh,
@@ -119,7 +119,7 @@ func Test_streamSupplier_Start(t *testing.T) {
 			},
 		}
 
-		s := &streamSupplier{
+		s := &StreamSupplier{
 			client:         client,
 			supplyInterval: 10 * time.Millisecond,
 		}
@@ -149,7 +149,7 @@ func Test_streamSupplier_Supply(t *testing.T) {
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 
-		s := &streamSupplier{
+		s := &StreamSupplier{
 			client:          client,
 			sendStreamCh:    sendStreamCh,
 			receiveStreamCh: receiveStreamCh,
@@ -185,7 +185,7 @@ func Test_streamSupplier_Supply(t *testing.T) {
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 
-		s := &streamSupplier{
+		s := &StreamSupplier{
 			client:          client,
 			sendStreamCh:    sendStreamCh,
 			receiveStreamCh: receiveStreamCh,
@@ -247,7 +247,7 @@ func Test_streamSupplier_Supply(t *testing.T) {
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 
-		s := &streamSupplier{
+		s := &StreamSupplier{
 			client:          client,
 			sendStreamCh:    sendStreamCh,
 			receiveStreamCh: receiveStreamCh,
@@ -389,7 +389,7 @@ func Test_streamSupplier_initializeStream(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
 
-			s := &streamSupplier{
+			s := &StreamSupplier{
 				client:             tt.fields.client,
 				recognizerFullName: tt.fields.recognizerFullName,
 			}

@@ -19,7 +19,7 @@ func TestNewResponseReceiver(t *testing.T) {
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 
 		got := NewResponseReceiver(responseCh, receiveStreamCh)
-		want := &responseReceiver{
+		want := &ResponseReceiver{
 			responseCh:      responseCh,
 			receiveStreamCh: receiveStreamCh,
 		}
@@ -74,7 +74,7 @@ func Test_responseReceiver_Start(t *testing.T) {
 		receiveStreamCh <- stream1
 		receiveStreamCh <- stream2
 
-		r := &responseReceiver{
+		r := &ResponseReceiver{
 			responseCh:      responseCh,
 			receiveStreamCh: receiveStreamCh,
 		}
@@ -100,7 +100,7 @@ func Test_responseReceiver_Start(t *testing.T) {
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 2)
 		close(receiveStreamCh)
 
-		r := &responseReceiver{
+		r := &ResponseReceiver{
 			receiveStreamCh: receiveStreamCh,
 		}
 

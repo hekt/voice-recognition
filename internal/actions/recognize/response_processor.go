@@ -9,12 +9,14 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
 
-//go:generate moq -rm -out response_processor_mock.go . ResponseProcessor
-type ResponseProcessor interface {
+//go:generate moq -rm -out response_processor_mock.go . ResponseProcessorInterface
+type ResponseProcessorInterface interface {
 	Start(ctx context.Context) error
 }
 
-type responseProcessor struct {
+var _ ResponseProcessorInterface = (*ResponseProcessor)(nil)
+
+type ResponseProcessor struct {
 	resultWriter  io.Writer
 	interimWriter io.Writer
 	responseCh    <-chan *speechpb.StreamingRecognizeResponse
@@ -24,15 +26,15 @@ func NewResponseProcessor(
 	resultWriter io.Writer,
 	interimWriter io.Writer,
 	responseCh <-chan *speechpb.StreamingRecognizeResponse,
-) ResponseProcessor {
-	return &responseProcessor{
+) *ResponseProcessor {
+	return &ResponseProcessor{
 		resultWriter:  resultWriter,
 		interimWriter: interimWriter,
 		responseCh:    responseCh,
 	}
 }
 
-func (p *responseProcessor) Start(ctx context.Context) error {
+func (p *ResponseProcessor) Start(ctx context.Context) error {
 	var buf bytes.Buffer
 	var interimResult []byte
 	for {

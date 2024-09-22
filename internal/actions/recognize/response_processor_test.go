@@ -18,7 +18,7 @@ func TestNewResponseProcessor(t *testing.T) {
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse, 1)
 
 		got := NewResponseProcessor(resultBuf, interimBuf, responseCh)
-		want := &responseProcessor{
+		want := &ResponseProcessor{
 			resultWriter:  resultBuf,
 			interimWriter: interimBuf,
 			responseCh:    responseCh,
@@ -39,7 +39,7 @@ func Test_responseProcessor_Start(t *testing.T) {
 		interimBuf := &bytes.Buffer{}
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
 
-		p := &responseProcessor{
+		p := &ResponseProcessor{
 			resultWriter:  resultBuf,
 			interimWriter: interimBuf,
 			responseCh:    responseCh,
@@ -154,7 +154,7 @@ func Test_responseProcessor_Start(t *testing.T) {
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
 		close(responseCh)
 
-		p := &responseProcessor{
+		p := &ResponseProcessor{
 			responseCh: responseCh,
 		}
 

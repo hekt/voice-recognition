@@ -8,12 +8,14 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
 
-//go:generate moq -rm -out audio_sender_mock.go . AudioSender
-type AudioSender interface {
+//go:generate moq -rm -out audio_sender_mock.go . AudioSenderInterface
+type AudioSenderInterface interface {
 	Start(ctx context.Context) error
 }
 
-type audioSender struct {
+var _ AudioSenderInterface = &AudioSender{}
+
+type AudioSender struct {
 	audioReader  io.Reader
 	sendStreamCh <-chan speechpb.Speech_StreamingRecognizeClient
 	bufferSize   int
@@ -23,15 +25,15 @@ func NewAudioSender(
 	audioReader io.Reader,
 	sendStreamCh <-chan speechpb.Speech_StreamingRecognizeClient,
 	bufferSize int,
-) AudioSender {
-	return &audioSender{
+) *AudioSender {
+	return &AudioSender{
 		audioReader:  audioReader,
 		sendStreamCh: sendStreamCh,
 		bufferSize:   bufferSize,
 	}
 }
 
-func (s *audioSender) Start(ctx context.Context) error {
+func (s *AudioSender) Start(ctx context.Context) error {
 	stream, ok := <-s.sendStreamCh
 	if !ok {
 		return fmt.Errorf("failed to get send stream from channel")

@@ -9,15 +9,17 @@ import (
 	"github.com/hekt/voice-recognition/pkg/speech"
 )
 
-//go:generate moq -rm -out stream_supplier_mock.go . StreamSupplier
-type StreamSupplier interface {
+//go:generate moq -rm -out stream_supplier_mock.go . StreamSupplierInterface
+type StreamSupplierInterface interface {
 	// Supply はストリームを一度だけ提供する。
 	Supply(ctx context.Context) error
 	// Start は一定間隔でのストリームの提供を開始する。
 	Start(ctx context.Context) error
 }
 
-type streamSupplier struct {
+var _ StreamSupplierInterface = (*StreamSupplier)(nil)
+
+type StreamSupplier struct {
 	client speech.Client
 	// sendStreamCh は送信用の stream を受け渡しする channel。
 	sendStreamCh chan<- speechpb.Speech_StreamingRecognizeClient
@@ -36,8 +38,8 @@ func NewStreamSupplier(
 	receiveStreamCh chan<- speechpb.Speech_StreamingRecognizeClient,
 	recognizerFullName string,
 	supplyInterval time.Duration,
-) StreamSupplier {
-	return &streamSupplier{
+) *StreamSupplier {
+	return &StreamSupplier{
 		client:             client,
 		sendStreamCh:       sendStreamCh,
 		receiveStreamCh:    receiveStreamCh,
@@ -46,7 +48,7 @@ func NewStreamSupplier(
 	}
 }
 
-func (s *streamSupplier) Start(ctx context.Context) error {
+func (s *StreamSupplier) Start(ctx context.Context) error {
 	timer := time.NewTimer(s.supplyInterval)
 	defer timer.Stop()
 
@@ -77,7 +79,7 @@ func (s *streamSupplier) Start(ctx context.Context) error {
 	}
 }
 
-func (s *streamSupplier) Supply(ctx context.Context) error {
+func (s *StreamSupplier) Supply(ctx context.Context) error {
 	stream, err := s.initializeStream(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to initialize stream: %w", err)
@@ -98,7 +100,7 @@ func (s *streamSupplier) Supply(ctx context.Context) error {
 	return nil
 }
 
-func (s *streamSupplier) initializeStream(
+func (s *StreamSupplier) initializeStream(
 	ctx context.Context,
 ) (speechpb.Speech_StreamingRecognizeClient, error) {
 	stream, err := s.client.StreamingRecognize(ctx)
