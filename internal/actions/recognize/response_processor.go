@@ -66,7 +66,7 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 				if _, err := p.resultWriter.Write([]byte(s)); err != nil {
 					return fmt.Errorf("failed to write result: %w", err)
 				}
-				interimResult = []byte{}
+				interimResult = nil
 				buf.Reset()
 			}
 

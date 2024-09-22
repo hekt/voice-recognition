@@ -40,7 +40,7 @@ func main() {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					options := []recognize.Option{}
+					options := make([]recognize.Option, 0, 3)
 					if cCtx.IsSet("output") {
 						options = append(options, recognize.WithOutputFilePath(cCtx.String("output")))
 					}
