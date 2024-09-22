@@ -41,7 +41,7 @@ func Run(ctx context.Context, arg Args, opts ...Option) error {
 	resultWriter := file.NewFileWriter(
 		options.outputFilePath,
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-		0644,
+		os.FileMode(0o644),
 	)
 	interimWriter := os.Stdout
 

@@ -12,7 +12,7 @@ func TestNewFileWriter(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		path := "test.txt"
 		flag := os.O_CREATE
-		perm := os.FileMode(0644)
+		perm := os.FileMode(0o644)
 
 		want := &FileWriter{path, flag, perm}
 		got := NewFileWriter(path, flag, perm)
@@ -27,7 +27,7 @@ func TestFileWriter_Write(t *testing.T) {
 		dir := t.TempDir()
 		path := dir + "/test.txt"
 		flag := os.O_APPEND | os.O_CREATE | os.O_WRONLY
-		perm := os.FileMode(0644)
+		perm := os.FileMode(0o644)
 
 		w := &FileWriter{path, flag, perm}
 		p := []byte("test")
@@ -59,7 +59,7 @@ func TestFileWriter_Write(t *testing.T) {
 		dir := t.TempDir()
 		path := dir + "/test.txt"
 		flag := os.O_APPEND
-		perm := os.FileMode(0644)
+		perm := os.FileMode(0o644)
 
 		w := &FileWriter{path, flag, perm}
 		p := []byte("test")
@@ -74,7 +74,7 @@ func TestFileWriter_Write(t *testing.T) {
 		dir := t.TempDir()
 		path := dir + "/test.txt"
 		flag := os.O_CREATE | os.O_RDONLY
-		perm := os.FileMode(0644)
+		perm := os.FileMode(0o644)
 
 		w := &FileWriter{path, flag, perm}
 		p := []byte("test")
