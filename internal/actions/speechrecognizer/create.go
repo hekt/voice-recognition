@@ -44,8 +44,8 @@ func Create(ctx context.Context, args CreateArgs) error {
 		return fmt.Errorf("failed to create recognizer: %w", err)
 	}
 
-	if _, e := op.Wait(ctx); e != nil {
-		return fmt.Errorf("failed to wait for create operation: %w", e)
+	if _, err := op.Wait(ctx); err != nil {
+		return fmt.Errorf("failed to wait for create operation: %w", err)
 	}
 
 	fmt.Println("Recognizer created")

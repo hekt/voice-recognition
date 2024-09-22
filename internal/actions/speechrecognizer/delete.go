@@ -27,8 +27,8 @@ func Delete(ctx context.Context, args DeleteArgs) error {
 		return fmt.Errorf("failed to delete recognizer: %w", err)
 	}
 
-	if _, e := op.Wait(ctx); e != nil {
-		return fmt.Errorf("failed to wait for delete operation: %w", e)
+	if _, err := op.Wait(ctx); err != nil {
+		return fmt.Errorf("failed to wait for delete operation: %w", err)
 	}
 
 	fmt.Println("Recognizer deleted")
