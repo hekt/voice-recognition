@@ -1,4 +1,4 @@
-package speechrecognizer
+package manage
 
 import (
 	"context"

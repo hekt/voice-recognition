@@ -4,8 +4,8 @@ import (
 	"log"
 	"os"
 
+	"github.com/hekt/voice-recognition/internal/actions/manage"
 	"github.com/hekt/voice-recognition/internal/actions/recognize"
-	"github.com/hekt/voice-recognition/internal/actions/speechrecognizer"
 	"github.com/urfave/cli/v2"
 )
 
@@ -88,7 +88,7 @@ func main() {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					return speechrecognizer.Create(cCtx.Context, speechrecognizer.CreateArgs{
+					return manage.Create(cCtx.Context, manage.CreateArgs{
 						ProjectID:      cCtx.String("project"),
 						RecognizerName: cCtx.String("recognizer"),
 						Model:          cCtx.String("model"),
@@ -113,7 +113,7 @@ func main() {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					return speechrecognizer.Delete(cCtx.Context, speechrecognizer.DeleteArgs{
+					return manage.Delete(cCtx.Context, manage.DeleteArgs{
 						ProjectID:      cCtx.String("project"),
 						RecognizerName: cCtx.String("recognizer"),
 					})
@@ -131,7 +131,7 @@ func main() {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					return speechrecognizer.List(cCtx.Context, speechrecognizer.ListArgs{
+					return manage.List(cCtx.Context, manage.ListArgs{
 						ProjectID: cCtx.String("project"),
 					})
 				},
