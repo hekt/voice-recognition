@@ -42,6 +42,11 @@ func (s *AudioSender) Start(ctx context.Context) error {
 	if !ok {
 		return fmt.Errorf("failed to get send stream from channel")
 	}
+	defer func() {
+		if err := stream.CloseSend(); err != nil {
+			slog.Error(fmt.Sprintf("failed to close send direction of stream: %v", err))
+		}
+	}()
 
 	buf := make([]byte, s.bufferSize)
 	for {
@@ -65,9 +70,6 @@ func (s *AudioSender) Start(ctx context.Context) error {
 			n, err := s.audioReader.Read(buf)
 			if errors.Is(err, io.EOF) {
 				slog.Debug("AudioSender: EOF received")
-				if err := stream.CloseSend(); err != nil {
-					return fmt.Errorf("failed to close send direction of stream on EOF: %w", err)
-				}
 				return nil
 			}
 			if err != nil {
