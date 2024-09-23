@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-	"time"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	ispeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
@@ -97,7 +96,6 @@ func Test_audioSender_Start(t *testing.T) {
 		bufCh <- []byte("aaaaaaaaaaaaaaaa")
 		bufCh <- []byte("bbbbbbbbbbbbbbbb")
 		sendStreamCh <- stream2
-		time.Sleep(100 * time.Millisecond) // Wait for stream to be switched.
 		bufCh <- []byte("c")
 		eofCh <- struct{}{}
 
@@ -110,17 +108,15 @@ func Test_audioSender_Start(t *testing.T) {
 		if got := sentBuf.String(); got != wantSent {
 			t.Errorf("sent audio = %q, want %q", got, wantSent)
 		}
-		if count := len(stream1.SendCalls()); count != 2 {
-			t.Errorf("stream1.Send() called %d times, want 2 times", count)
-		}
 		if count := len(stream1.CloseSendCalls()); count != 1 {
 			t.Errorf("stream1.CloseSend() called %d times, want 1 times", count)
 		}
-		if count := len(stream2.SendCalls()); count != 1 {
-			t.Errorf("stream2.Send() called %d times, want 1 times", count)
-		}
 		if count := len(stream2.CloseSendCalls()); count != 1 {
 			t.Errorf("stream2.CloseSend() called %d times, want 1 times", count)
+		}
+		// It is non-deterministic whather stream1 or stream2 receives the third Send() call.
+		if count := len(stream1.SendCalls()) + len(stream2.SendCalls()); count != 3 {
+			t.Errorf("stream.Send() called %d times, want 3 times", count)
 		}
 	})
 
