@@ -44,7 +44,7 @@ func (r *ResponseReceiver) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		default:
 			resp, err := stream.Recv()
 			if err == io.EOF {
@@ -61,7 +61,7 @@ func (r *ResponseReceiver) Start(ctx context.Context) error {
 					slog.Debug("ResponseReceiver: stream switched")
 					continue
 				case <-ctx.Done():
-					return nil
+					return ctx.Err()
 				}
 			}
 			if status.Code(err) == codes.Canceled {

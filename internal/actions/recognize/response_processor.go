@@ -53,7 +53,7 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case resp, ok := <-p.responseCh:
 			if !ok {
 				return fmt.Errorf("response channel is closed")

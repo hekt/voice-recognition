@@ -59,7 +59,7 @@ func (s *StreamSupplier) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case <-timer.C:
 			slog.Debug("StreamSupplier: timer fired")
 
@@ -73,13 +73,13 @@ func (s *StreamSupplier) Start(ctx context.Context) error {
 			select {
 			case s.sendStreamCh <- newStream:
 			case <-ctx.Done():
-				return nil
+				return ctx.Err()
 			}
 
 			select {
 			case s.receiveStreamCh <- newStream:
 			case <-ctx.Done():
-				return nil
+				return ctx.Err()
 			}
 
 			slog.Debug("StreamSupplier: stream supplied")
@@ -96,13 +96,13 @@ func (s *StreamSupplier) Supply(ctx context.Context) error {
 	select {
 	case s.sendStreamCh <- stream:
 	case <-ctx.Done():
-		return fmt.Errorf("context is done: %w", context.Canceled)
+		return ctx.Err()
 	}
 
 	select {
 	case s.receiveStreamCh <- stream:
 	case <-ctx.Done():
-		return fmt.Errorf("context is done: %w", context.Canceled)
+		return ctx.Err()
 	}
 
 	return nil

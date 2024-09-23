@@ -3,6 +3,7 @@ package recognize
 import (
 	"bytes"
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 	"testing"
@@ -133,8 +134,8 @@ func Test_responseProcessor_Start(t *testing.T) {
 		cancel()
 		wg.Wait()
 
-		if got != nil {
-			t.Errorf("Start() error = %v, want nil", got)
+		if !errors.Is(got, context.Canceled) {
+			t.Errorf("Start() error = %v, want %v", got, context.Canceled)
 		}
 
 		// (3) の確定分 + 途中終了した (4)

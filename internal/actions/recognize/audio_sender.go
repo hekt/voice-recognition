@@ -51,7 +51,7 @@ func (s *AudioSender) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case newStream, ok := <-s.sendStreamCh:
 			if !ok {
 				return fmt.Errorf("send stream channel is closed")

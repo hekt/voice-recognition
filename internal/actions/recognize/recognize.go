@@ -2,6 +2,7 @@ package recognize
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -62,5 +63,11 @@ func Run(ctx context.Context, args Args, opts ...Option) error {
 		return err
 	}
 
-	return recognizer.Start(ctx)
+	if err := recognizer.Start(ctx); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }

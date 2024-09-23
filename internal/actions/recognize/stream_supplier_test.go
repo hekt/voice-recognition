@@ -98,8 +98,8 @@ func Test_streamSupplier_Start(t *testing.T) {
 		cancel()
 		wg.Wait()
 
-		if got != nil {
-			t.Errorf("streamSupplier.Start() error = %v, want nil", got)
+		if !errors.Is(got, context.Canceled) {
+			t.Errorf("streamSupplier.Start() error = %v, want %v", got, context.Canceled)
 		}
 
 		// バッファが 1 なので、二回取り出したあと三回目を送信して四回目で待機していたはず
