@@ -56,7 +56,7 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 			return nil
 		case resp, ok := <-p.responseCh:
 			if !ok {
-				return fmt.Errorf("failed to get response from channel")
+				return fmt.Errorf("response channel is closed")
 			}
 
 			// process response

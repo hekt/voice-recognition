@@ -55,7 +55,7 @@ func (r *ResponseReceiver) Start(ctx context.Context) error {
 				select {
 				case newStream, ok := <-r.receiveStreamCh:
 					if !ok {
-						return fmt.Errorf("failed to get new receive stream from channel")
+						return fmt.Errorf("receive stream channel is closed")
 					}
 					stream = newStream
 					slog.Debug("ResponseReceiver: stream switched")

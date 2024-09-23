@@ -54,7 +54,7 @@ func (s *AudioSender) Start(ctx context.Context) error {
 			return nil
 		case newStream, ok := <-s.sendStreamCh:
 			if !ok {
-				return fmt.Errorf("failed to get new send stream from channel")
+				return fmt.Errorf("send stream channel is closed")
 			}
 			slog.Debug("AudioSender: new stream received")
 
