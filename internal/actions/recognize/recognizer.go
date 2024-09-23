@@ -107,7 +107,9 @@ func (r *recognizer) Start(ctx context.Context) error {
 	slog.Debug("recognizer started")
 
 	defer func() {
-		r.client.Close()
+		if err := r.client.Close(); err != nil {
+			slog.Error(fmt.Sprintf("failed to close client: %v", err))
+		}
 		close(r.responseCh)
 		close(r.sendStreamCh)
 		close(r.receiveStreamCh)
