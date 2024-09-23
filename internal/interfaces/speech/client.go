@@ -8,8 +8,8 @@ import (
 	"github.com/googleapis/gax-go/v2"
 )
 
-// SpeechClient は cloud.google.com/go/speech/apiv2.Client のインターフェース。
-// Client は具体型なので、テスト用にモックを作成するためにインターフェースを定義する。
+// SpeechClient is an interface of cloud.google.com/go/speech/apiv2.Client.
+// define the interface to create a mock for testing because apiv2.Client is a struct.
 //
 //go:generate moq -rm -out client_mock.go . Client
 type Client interface {

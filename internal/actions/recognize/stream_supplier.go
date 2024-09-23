@@ -12,24 +12,25 @@ import (
 
 //go:generate moq -rm -out stream_supplier_mock.go . StreamSupplierInterface
 type StreamSupplierInterface interface {
-	// Supply はストリームを一度だけ提供する。
+	// Supply is supplies the streams once.
 	Supply(ctx context.Context) error
-	// Start は一定間隔でのストリームの提供を開始する。
+	// Start is starts supplying the streams at regular intervals.
 	Start(ctx context.Context) error
 }
 
 var _ StreamSupplierInterface = (*StreamSupplier)(nil)
 
 type StreamSupplier struct {
+	// client is a client of the Speech-to-Text API.
 	client speech.Client
-	// sendStreamCh は送信用の stream を受け渡しする channel。
+	// sendStreamCh is a channel to pass the sending stream.
 	sendStreamCh chan<- speechpb.Speech_StreamingRecognizeClient
-	// receiveStreamCh は受信用の stream を受け渡しする channel。
+	// receiveStreamCh is a channel to pass the receiving stream.
 	receiveStreamCh chan<- speechpb.Speech_StreamingRecognizeClient
 
-	// recognizerFullName は recognizer のフルネーム。
+	// recognizerFullName is the full name of the recognizer.
 	recognizerFullName string
-	// reconnectInterval はストリームの提供間隔を表す。
+	// supplyInterval is the interval of stream supply.
 	supplyInterval time.Duration
 }
 

@@ -54,7 +54,7 @@ func (s *AudioSender) Start(ctx context.Context) error {
 			}
 			slog.Debug("AudioSender: new stream received")
 
-			// 新しい stream が来たら古い stream を閉じて新しい stream に切り替える。
+			// when the new stream is received, close the current stream and switch to the new stream.
 			if err := stream.CloseSend(); err != nil {
 				return fmt.Errorf("failed to close send direction of stream on reconnect: %w", err)
 			}

@@ -43,7 +43,7 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			// 終了する前に確定していない中間結果を書き込む。
+			// write interim result before exit.
 			if len(interimResult) == 0 {
 				return nil
 			}
@@ -58,7 +58,7 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 				return fmt.Errorf("failed to get response from channel")
 			}
 
-			// レスポンス処理
+			// process response
 			buf.Reset()
 			for _, result := range resp.Results {
 				s := result.Alternatives[0].Transcript

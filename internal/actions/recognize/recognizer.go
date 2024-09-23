@@ -68,10 +68,10 @@ func newRecognizer(
 		return nil, errors.New("interim writer must be specified")
 	}
 
-	// どの程度のバッファサイズが適切かは不明なため、バッファサイズは 10 にしている。
+	// not sure what is the appropriate buffer size.
 	responseCh := make(chan *speechpb.StreamingRecognizeResponse, 10)
-	// stream が取り出されていないということはまだ使われていないということで、
-	// その状態で新しい stream を作成する必要はないため、バッファサイズは 1 にしている。
+	// if the stream is not taken out, there is no need to create new stream.
+	// so buffer size is set to 1.
 	sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 	receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 

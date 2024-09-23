@@ -11,13 +11,11 @@ import (
 )
 
 const (
-	// streamTimeout はストリームのタイムアウト時間を表す。
-	// この時間を超えるとサーバー側からストリームが切断される。
-	streamTimeout = 5 * time.Minute
+	// maxStreamDuration is the maximum duration for which the stream remains connected
+	maxStreamDuration = 5 * time.Minute
 
-	// streamTimeoutOffset はストリームのタイムアウト時間のオフセットを表す。
-	// この時間だけ短く設定することで、ストリームが切断される前に再接続を試みる。
-	streamTimeoutOffset = 10 * time.Second
+	// reconnectLeadTime is the lead time before the stream timeout to initiate reconnection attempts.
+	reconnectLeadTime = 10 * time.Second
 )
 
 type Args struct {
@@ -29,7 +27,7 @@ func Run(ctx context.Context, arg Args, opts ...Option) error {
 	options := &options{
 		outputFilePath:    fmt.Sprintf("output/%d.txt", time.Now().Unix()),
 		bufferSize:        1024,
-		reconnectInterval: streamTimeout - streamTimeoutOffset,
+		reconnectInterval: maxStreamDuration - reconnectLeadTime,
 	}
 	for _, opt := range opts {
 		if err := opt(options); err != nil {

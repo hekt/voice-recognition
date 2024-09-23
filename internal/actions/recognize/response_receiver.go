@@ -51,8 +51,8 @@ func (r *ResponseReceiver) Start(ctx context.Context) error {
 			if errors.Is(err, io.EOF) {
 				slog.Debug("ResponseReceiver: EOF received")
 
-				// 送信側で stream が閉じられると、受信側は最後のレスポンスのあと EOF を受信する。
-				// そのタイミングで新しい stream に切り替える。
+				// when the stream is closed by the sender, the receiver will receive EOF after the final response.
+				// at that time, switch to new stream.
 				newStream, ok := <-r.receiveStreamCh
 				if !ok {
 					return fmt.Errorf("failed to get new receive stream from channel")
@@ -63,8 +63,8 @@ func (r *ResponseReceiver) Start(ctx context.Context) error {
 				continue
 			}
 			if status.Code(err) == codes.Canceled {
-				// コマンドを SIGINT で終了した際に canceled が発生するため、無視して終了する。
-				// なお status.Code(err) は err が nil の場合は codes.OK を返す。
+				// when the command is terminated by SIGINT, context canceled occurs in the stream.
+				// status.Code(err) returns codes.OK if err is nil.
 				return nil
 			}
 			if err != nil {
