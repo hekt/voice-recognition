@@ -2,6 +2,7 @@ package recognize
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -62,7 +63,7 @@ func (s *AudioSender) Start(ctx context.Context) error {
 			slog.Debug("AudioSender: stream switched")
 		default:
 			n, err := s.audioReader.Read(buf)
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				slog.Debug("AudioSender: EOF received")
 				if err := stream.CloseSend(); err != nil {
 					return fmt.Errorf("failed to close send direction of stream on EOF: %w", err)

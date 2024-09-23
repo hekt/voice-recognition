@@ -2,6 +2,7 @@ package recognize
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -47,7 +48,7 @@ func (r *ResponseReceiver) Start(ctx context.Context) error {
 			return nil
 		default:
 			resp, err := stream.Recv()
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				slog.Debug("ResponseReceiver: EOF received")
 
 				// 送信側で stream が閉じられると、受信側は最後のレスポンスのあと EOF を受信する。
