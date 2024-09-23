@@ -40,18 +40,19 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 
 	var buf bytes.Buffer
 	var interimResult []byte
+	defer func() {
+		if len(interimResult) == 0 {
+			return
+		}
+		if _, err := p.resultWriter.Write(interimResult); err != nil {
+			slog.Error(fmt.Sprintf("failed to write interim result: %v", err))
+		}
+		slog.Debug("ResponseProcessor: interim result written")
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
-			// write interim result before exit.
-			if len(interimResult) == 0 {
-				return nil
-			}
-			if _, err := p.resultWriter.Write(interimResult); err != nil {
-				return fmt.Errorf("failed to write interim result: %w", err)
-			}
-			slog.Debug("ResponseProcessor: interim result written")
-
 			return nil
 		case resp, ok := <-p.responseCh:
 			if !ok {
