@@ -59,6 +59,7 @@ gst-launch-1.0 -q osxaudiosrc device=<deviceNo> \
 			--output output.txt
 ```
 
+- ctrl-c で終了する
 - `deviceNo` は `say -a '?'` を実行すると得られる BlackHole 2ch の番号
 - サンプリングレートが合わない場合は audoresample を追加する必要があるが、blackhole 2ch で合わせていれば不要
     - format, channels の調整は osxaudiosrc でやってくれるっぽい（audioconvert が必要な場合もあるかも）
