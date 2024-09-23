@@ -23,7 +23,7 @@ type Args struct {
 	RecognizerName string
 }
 
-func Run(ctx context.Context, arg Args, opts ...Option) error {
+func Run(ctx context.Context, args Args, opts ...Option) error {
 	options := &options{
 		outputFilePath:    fmt.Sprintf("output/%d.txt", time.Now().Unix()),
 		bufferSize:        1024,
@@ -49,8 +49,8 @@ func Run(ctx context.Context, arg Args, opts ...Option) error {
 	}
 
 	recognizer, err := newRecognizer(
-		arg.ProjectID,
-		arg.RecognizerName,
+		args.ProjectID,
+		args.RecognizerName,
 		options.reconnectInterval,
 		options.bufferSize,
 		client,
