@@ -60,16 +60,19 @@ func Test_audioSender_Start(t *testing.T) {
 		crateStreamMock := func() *ispeechpb.Speech_StreamingRecognizeClientMock {
 			return &ispeechpb.Speech_StreamingRecognizeClientMock{
 				SendFunc: func(req *speechpb.StreamingRecognizeRequest) error {
+					defer func() { sendCalls <- struct{}{} }()
+
 					audioReq, ok := req.StreamingRequest.(*speechpb.StreamingRecognizeRequest_Audio)
 					if !ok {
 						t.Errorf("unexpected request type: %T", req.StreamingRequest)
 					}
 					sentBuf.Write(audioReq.Audio)
-					sendCalls <- struct{}{}
+
 					return nil
 				},
 				CloseSendFunc: func() error {
-					closeSendCalls <- struct{}{}
+					defer func() { closeSendCalls <- struct{}{} }()
+
 					return nil
 				},
 			}
@@ -121,9 +124,10 @@ func Test_audioSender_Start(t *testing.T) {
 		// AudioSender is still waiting for Read() result; stream not switched yet.
 
 		// Send second data chunk to AudioSender.
+		// AudioSender reads the data, sends it to stream1, then checks select and switches to stream2.
 		bufCh <- secondChunk
 
-		// AudioSender reads the data, sends it to stream1, then checks select and switches to stream2.
+		// Wait until the CloseSend() call is made on stream1.
 		<-closeSendCalls
 
 		// Now, AudioSender has switched to stream2.
