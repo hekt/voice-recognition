@@ -110,9 +110,6 @@ func (r *recognizer) Start(ctx context.Context) error {
 		if err := r.client.Close(); err != nil {
 			slog.Error(fmt.Sprintf("failed to close client: %v", err))
 		}
-		close(r.responseCh)
-		close(r.sendStreamCh)
-		close(r.receiveStreamCh)
 	}()
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt)
@@ -125,12 +122,15 @@ func (r *recognizer) Start(ctx context.Context) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
+		defer close(r.sendStreamCh)
+		defer close(r.receiveStreamCh)
 		if err := r.streamSupplier.Start(ctx); err != nil {
 			return fmt.Errorf("error occured in stream supplier: %w", err)
 		}
 		return nil
 	})
 	eg.Go(func() error {
+		defer close(r.responseCh)
 		if err := r.reseponseReceiver.Start(ctx); err != nil {
 			return fmt.Errorf("error occured in response receiver: %w", err)
 		}
