@@ -36,6 +36,18 @@ func Run(ctx context.Context, args Args, opts ...Option) error {
 		}
 	}
 
+	// This behavior ensures the output file is created early,
+	// making it easier to use with tools like `tail -f`.
+	{
+		f, err := os.OpenFile(options.outputFilePath, os.O_CREATE, os.FileMode(0o644))
+		if err != nil {
+			return fmt.Errorf("failed to open output file: %w", err)
+		}
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("failed to close output file: %w", err)
+		}
+	}
+
 	audioReader := os.Stdin
 	resultWriter := file.NewOpenCloseFileWriter(
 		options.outputFilePath,
