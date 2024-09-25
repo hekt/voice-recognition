@@ -9,3 +9,7 @@ gen:
 .PHONY: lint
 lint:
 	staticcheck ./...
+
+.PHONE: install-tools
+install-tools:
+	./scripts/install-tools.sh
