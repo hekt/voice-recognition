@@ -10,6 +10,6 @@ gen:
 lint:
 	staticcheck ./...
 
-.PHONE: install-tools
+.PHONY: install-tools
 install-tools:
 	./scripts/install-tools.sh
