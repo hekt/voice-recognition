@@ -39,7 +39,7 @@ func TestDecoratedInterimWriter_Write(t *testing.T) {
 	})
 }
 func TestDecoratedResultWriter_Write(t *testing.T) {
-	wantFormat := "%s\n"
+	wantFormat := "\n%s"
 
 	t.Run("write once", func(t *testing.T) {
 		buf := &bytes.Buffer{}

@@ -9,6 +9,7 @@ var (
 	clearScreen = []byte("\033[H\033[2J")
 	greenColor  = []byte("\033[32m")
 	resetColor  = []byte("\033[0m")
+	newLine     = []byte("\n")
 )
 
 var _ io.Writer = (*DecoratedInterimWriter)(nil)
@@ -34,8 +35,8 @@ type DecoratedResultWriter struct {
 }
 
 func (w *DecoratedResultWriter) Write(p []byte) (n int, err error) {
-	buf := bytes.NewBuffer(p)
-	buf.WriteString("\n")
+	buf := bytes.NewBuffer(newLine)
+	buf.Write(p)
 
 	return w.Writer.Write(buf.Bytes())
 }
