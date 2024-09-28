@@ -94,6 +94,15 @@ func Test_responseProcessor_Start(t *testing.T) {
 				},
 			},
 		}
+		// no alternatives must be skipped
+		responseCh <- &speechpb.StreamingRecognizeResponse{
+			Results: []*speechpb.StreamingRecognitionResult{
+				{
+					Alternatives: []*speechpb.SpeechRecognitionAlternative{},
+					IsFinal:      false,
+				},
+			},
+		}
 		// (3) 確定応答レスポンス
 		responseCh <- &speechpb.StreamingRecognizeResponse{
 			Results: []*speechpb.StreamingRecognitionResult{

@@ -62,6 +62,10 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 			// process response
 			buf.Reset()
 			for _, result := range resp.Results {
+				if len(result.Alternatives) == 0 {
+					continue
+				}
+
 				s := result.Alternatives[0].Transcript
 
 				if !result.IsFinal {
