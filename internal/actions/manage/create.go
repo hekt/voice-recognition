@@ -37,6 +37,9 @@ func Create(ctx context.Context, args CreateArgs) error {
 						AudioChannelCount: 1,
 					},
 				},
+				Features: &speechpb.RecognitionFeatures{
+					EnableAutomaticPunctuation: true,
+				},
 			},
 		},
 	})
