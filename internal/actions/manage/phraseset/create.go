@@ -37,7 +37,7 @@ func Create(ctx context.Context, args CreateArgs) error {
 			Boost:       args.Boost,
 		},
 		PhraseSetId: args.PhraseSetName,
-		Parent:      util.RecognizerParent(args.ProjectID),
+		Parent:      util.ResourceParent(args.ProjectID),
 	})
 
 	if err != nil {

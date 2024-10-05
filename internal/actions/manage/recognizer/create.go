@@ -33,7 +33,7 @@ func Create(ctx context.Context, args CreateArgs) error {
 	}
 
 	op, err := client.CreateRecognizer(ctx, &speechpb.CreateRecognizerRequest{
-		Parent:       util.RecognizerParent(args.ProjectID),
+		Parent:       util.ResourceParent(args.ProjectID),
 		RecognizerId: args.RecognizerName,
 		Recognizer: &speechpb.Recognizer{
 			DisplayName: args.RecognizerName,

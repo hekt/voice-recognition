@@ -21,7 +21,7 @@ func List(ctx context.Context, args ListArgs) error {
 	}
 
 	iterResp := client.ListRecognizers(ctx, &speechpb.ListRecognizersRequest{
-		Parent:      util.RecognizerParent(args.ProjectID),
+		Parent:      util.ResourceParent(args.ProjectID),
 		ShowDeleted: true,
 	})
 

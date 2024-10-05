@@ -21,7 +21,7 @@ func List(ctx context.Context, args ListArgs) error {
 	}
 
 	iterResp := client.ListPhraseSets(ctx, &speechpb.ListPhraseSetsRequest{
-		Parent:      util.RecognizerParent(args.ProjectID),
+		Parent:      util.ResourceParent(args.ProjectID),
 		ShowDeleted: true,
 	})
 
