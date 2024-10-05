@@ -19,7 +19,7 @@ type UpdateArgs struct {
 func Update(ctx context.Context, args UpdateArgs) error {
 	client, err := speech.NewClient(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to create client: %w", err)
+		return fmt.Errorf("failed to update client: %w", err)
 	}
 
 	phrases := make([]*speechpb.PhraseSet_Phrase, 0, len(args.Phrases))
