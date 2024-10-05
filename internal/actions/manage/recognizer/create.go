@@ -14,12 +14,22 @@ type CreateArgs struct {
 	RecognizerName string
 	Model          string
 	LanguageCode   string
+	PhraseSet      string
 }
 
 func Create(ctx context.Context, args CreateArgs) error {
 	client, err := speech.NewClient(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
+	}
+
+	phraseSets := []*speechpb.SpeechAdaptation_AdaptationPhraseSet{}
+	if args.PhraseSet != "" {
+		phraseSets = append(phraseSets, &speechpb.SpeechAdaptation_AdaptationPhraseSet{
+			Value: &speechpb.SpeechAdaptation_AdaptationPhraseSet_PhraseSet{
+				PhraseSet: util.PhraseSetFullname(args.ProjectID, args.PhraseSet),
+			},
+		})
 	}
 
 	op, err := client.CreateRecognizer(ctx, &speechpb.CreateRecognizerRequest{
@@ -39,6 +49,9 @@ func Create(ctx context.Context, args CreateArgs) error {
 				},
 				Features: &speechpb.RecognitionFeatures{
 					EnableAutomaticPunctuation: true,
+				},
+				Adaptation: &speechpb.SpeechAdaptation{
+					PhraseSets: phraseSets,
 				},
 			},
 		},
