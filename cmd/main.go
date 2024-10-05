@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/hekt/voice-recognition/internal/actions/manage"
+	"github.com/hekt/voice-recognition/internal/actions/manage/recognizer"
 	"github.com/hekt/voice-recognition/internal/actions/recognize"
 	"github.com/hekt/voice-recognition/internal/logger"
 	"github.com/urfave/cli/v2"
@@ -103,7 +103,7 @@ func main() {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					return manage.Create(cCtx.Context, manage.CreateArgs{
+					return recognizer.Create(cCtx.Context, recognizer.CreateArgs{
 						ProjectID:      cCtx.String("project"),
 						RecognizerName: cCtx.String("recognizer"),
 						Model:          cCtx.String("model"),
@@ -128,7 +128,7 @@ func main() {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					return manage.Delete(cCtx.Context, manage.DeleteArgs{
+					return recognizer.Delete(cCtx.Context, recognizer.DeleteArgs{
 						ProjectID:      cCtx.String("project"),
 						RecognizerName: cCtx.String("recognizer"),
 					})
@@ -146,7 +146,7 @@ func main() {
 					},
 				},
 				Action: func(cCtx *cli.Context) error {
-					return manage.List(cCtx.Context, manage.ListArgs{
+					return recognizer.List(cCtx.Context, recognizer.ListArgs{
 						ProjectID: cCtx.String("project"),
 					})
 				},
