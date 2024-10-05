@@ -140,30 +140,15 @@ func NewPhraseSetCreateCommand() *cli.Command {
 		Usage:    "create phrase set for Speech-to-Text API",
 		Flags: []cli.Flag{
 			requiredProjectFlag,
-			&cli.StringFlag{
-				Name:     "name",
-				Usage:    "Phrase set name",
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:  "phrases",
-				Usage: "Commma separated phrases to add to the phrase set",
-			},
-			&cli.StringSliceFlag{
-				Name:    "phrase",
-				Aliases: []string{"p"},
-				Usage:   "Phrase to add to the phrase set possibly multiple",
-			},
-			&cli.Float64Flag{
-				Name:  "boost",
-				Usage: "Boost value for the phrase set",
-				Value: 0,
-			},
+			requiredPhraseSetFlag,
+			phraseFlag,
+			phrasesFlag,
+			boostFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
 			rawPhrases := append(
-				strings.Split(cCtx.String("phrases"), ","),
-				cCtx.StringSlice("phrase")...,
+				strings.Split(cCtx.String(phrasesFlag.Name), ","),
+				cCtx.StringSlice(phraseFlag.Name)...,
 			)
 			phrases := make([]string, 0, len(rawPhrases))
 			for _, phrase := range rawPhrases {
@@ -178,9 +163,9 @@ func NewPhraseSetCreateCommand() *cli.Command {
 
 			return phraseset.Create(cCtx.Context, phraseset.CreateArgs{
 				ProjectID:     cCtx.String(projectFlag.Name),
-				PhraseSetName: cCtx.String("name"),
+				PhraseSetName: cCtx.String(phraseSetFlag.Name),
 				Phrases:       phrases,
-				Boost:         float32(cCtx.Float64("boost")),
+				Boost:         float32(cCtx.Float64(boostFlag.Name)),
 			})
 		},
 	}
@@ -193,30 +178,15 @@ func NewPhraseSetUpdateCommand() *cli.Command {
 		Usage:    "update phrase set for Speech-to-Text API",
 		Flags: []cli.Flag{
 			requiredProjectFlag,
-			&cli.StringFlag{
-				Name:     "name",
-				Usage:    "Phrase set name",
-				Required: true,
-			},
-			&cli.StringFlag{
-				Name:  "phrases",
-				Usage: "Commma separated phrases to add to the phrase set",
-			},
-			&cli.StringSliceFlag{
-				Name:    "phrase",
-				Aliases: []string{"p"},
-				Usage:   "Phrase to add to the phrase set possibly multiple",
-			},
-			&cli.Float64Flag{
-				Name:  "boost",
-				Usage: "Boost value for the phrase set",
-				Value: 0,
-			},
+			requiredPhraseSetFlag,
+			phraseFlag,
+			phrasesFlag,
+			boostFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
 			rawPhrases := append(
-				strings.Split(cCtx.String("phrases"), ","),
-				cCtx.StringSlice("phrase")...,
+				strings.Split(cCtx.String(phrasesFlag.Name), ","),
+				cCtx.StringSlice(phraseFlag.Name)...,
 			)
 			phrases := make([]string, 0, len(rawPhrases))
 			for _, phrase := range rawPhrases {
@@ -231,9 +201,9 @@ func NewPhraseSetUpdateCommand() *cli.Command {
 
 			return phraseset.Update(cCtx.Context, phraseset.UpdateArgs{
 				ProjectID:     cCtx.String(projectFlag.Name),
-				PhraseSetName: cCtx.String("name"),
+				PhraseSetName: cCtx.String(phraseSetFlag.Name),
 				Phrases:       phrases,
-				Boost:         float32(cCtx.Float64("boost")),
+				Boost:         float32(cCtx.Float64(boostFlag.Name)),
 			})
 		},
 	}
