@@ -34,6 +34,17 @@ var requiredRecognizerFlag = &cli.StringFlag{
 	Required: true,
 }
 
+var modelFlag = &cli.StringFlag{
+	Name:  "model",
+	Usage: "Model name",
+}
+
+var languageCodeFlag = &cli.StringSliceFlag{
+	Name:    "language-code",
+	Aliases: []string{"l"},
+	Usage:   "Language code possibly multiple",
+}
+
 //
 // Phrase set flags
 //

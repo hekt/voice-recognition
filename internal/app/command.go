@@ -72,28 +72,23 @@ func NewRecognizerCreateCommand() *cli.Command {
 		Flags: []cli.Flag{
 			requiredProjectFlag,
 			requiredRecognizerFlag,
-			&cli.StringFlag{
-				Name:  "model",
-				Usage: "Model for the recognizer",
-				Value: "long",
-			},
-			&cli.StringFlag{
-				Name:  "language",
-				Usage: "Language Code for the recognizer",
-				Value: "ja-jp",
-			},
-			&cli.StringFlag{
-				Name:  "phraseset",
-				Usage: "Phrase set to use for the recognizer",
-			},
+			modelFlag,
+			languageCodeFlag,
+			phraseSetFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
+			// TODO support multiple language code
+			languageCode := ""
+			if fs := cCtx.StringSlice(languageCodeFlag.Name); len(fs) > 0 {
+				languageCode = fs[0]
+			}
+
 			return recognizer.Create(cCtx.Context, recognizer.CreateArgs{
 				ProjectID:      cCtx.String(projectFlag.Name),
 				RecognizerName: cCtx.String(recognizerFlag.Name),
-				Model:          cCtx.String("model"),
-				LanguageCode:   cCtx.String("language"),
-				PhraseSet:      cCtx.String("phraseset"),
+				Model:          cCtx.String(modelFlag.Name),
+				LanguageCode:   languageCode,
+				PhraseSet:      cCtx.String(phraseSetFlag.Name),
 			})
 		},
 	}
