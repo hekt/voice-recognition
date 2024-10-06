@@ -61,7 +61,7 @@ func Run(ctx context.Context, args Args, opts ...Option) error {
 		return fmt.Errorf("failed to create speech client: %w", err)
 	}
 
-	recognizer, err := newRecognizer(
+	recognizer, err := NewRecognizer(
 		args.ProjectID,
 		args.RecognizerName,
 		options.reconnectInterval,

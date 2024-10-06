@@ -17,7 +17,7 @@ import (
 	"github.com/hekt/voice-recognition/internal/resource"
 )
 
-type recognizer struct {
+type Recognizer struct {
 	streamSupplier    StreamSupplierInterface
 	audioSender       AudioSenderInterface
 	reseponseReceiver ResponseReceiverInterface
@@ -33,7 +33,7 @@ type recognizer struct {
 	receiveStreamCh chan speechpb.Speech_StreamingRecognizeClient
 }
 
-func newRecognizer(
+func NewRecognizer(
 	projectID string,
 	recognizerName string,
 	reconnectInterval time.Duration,
@@ -42,7 +42,7 @@ func newRecognizer(
 	audioReader io.Reader,
 	resultWriter io.Writer,
 	interimWriter io.Writer,
-) (*recognizer, error) {
+) (*Recognizer, error) {
 	if projectID == "" {
 		return nil, errors.New("project ID must be specified")
 	}
@@ -90,7 +90,7 @@ func newRecognizer(
 		responseCh,
 	)
 
-	return &recognizer{
+	return &Recognizer{
 		streamSupplier:    streamSupplier,
 		audioSender:       audioSender,
 		reseponseReceiver: responseReceiver,
@@ -103,7 +103,7 @@ func newRecognizer(
 	}, nil
 }
 
-func (r *recognizer) Start(ctx context.Context) error {
+func (r *Recognizer) Start(ctx context.Context) error {
 	slog.Debug("recognizer started")
 
 	defer func() {

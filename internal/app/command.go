@@ -2,13 +2,16 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 	"time"
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"github.com/hekt/voice-recognition/internal/actions/recognize"
+	"github.com/hekt/voice-recognition/internal/file"
 	"github.com/hekt/voice-recognition/internal/logger"
 	"github.com/hekt/voice-recognition/internal/resource"
 	"github.com/urfave/cli/v2"
@@ -25,14 +28,17 @@ func NewRecognizeCommand() *cli.Command {
 			&cli.StringFlag{
 				Name:  "output",
 				Usage: "Output file path",
+				Value: fmt.Sprintf("output/%d.json", time.Now().Unix()),
 			},
 			&cli.DurationFlag{
 				Name:  "interval",
 				Usage: "Reconnect interval duration",
+				Value: time.Minute,
 			},
 			&cli.IntFlag{
 				Name:  "buffersize",
 				Usage: "Buffer size bytes",
+				Value: 1024,
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
@@ -42,25 +48,46 @@ func NewRecognizeCommand() *cli.Command {
 				}
 			}
 
-			options := make([]recognize.Option, 0, 3)
-			if cCtx.IsSet("output") {
-				options = append(options, recognize.WithOutputFilePath(cCtx.String("output")))
-			}
-			if cCtx.IsSet("interval") {
-				options = append(options, recognize.WithReconnectInterval(cCtx.Duration("interval")))
-			}
-			if cCtx.IsSet("buffersize") {
-				options = append(options, recognize.WithBufferSize(cCtx.Int("buffersize")))
+			// This behavior ensures the output file is created early,
+			// making it easier to use with tools like `tail -f`.
+			if err := prepareOutputFile(cCtx.String("output")); err != nil {
+				return fmt.Errorf("failed to prepare output file: %w", err)
 			}
 
-			return recognize.Run(
-				cCtx.Context,
-				recognize.Args{
-					ProjectID:      cCtx.String(projectFlag.Name),
-					RecognizerName: cCtx.String(recognizerFlag.Name),
-				},
-				options...,
+			audioReader := os.Stdin
+			resultWriter := file.NewOpenCloseFileWriter(
+				cCtx.String("output"),
+				os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+				os.FileMode(0o644),
 			)
+			interimWriter := os.Stdout
+			client, err := speech.NewClient(cCtx.Context)
+			if err != nil {
+				return fmt.Errorf("failed to create speech client: %w", err)
+			}
+
+			recognizer, err := recognize.NewRecognizer(
+				cCtx.String(projectFlag.Name),
+				cCtx.String(recognizerFlag.Name),
+				cCtx.Duration("interval"),
+				cCtx.Int("buffersize"),
+				client,
+				audioReader,
+				resultWriter,
+				interimWriter,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create recognizer: %w", err)
+			}
+
+			if err := recognizer.Start(cCtx.Context); err != nil {
+				if errors.Is(err, context.Canceled) {
+					return nil
+				}
+				return fmt.Errorf("failed to start recognizer: %w", err)
+			}
+
+			return nil
 		},
 	}
 }
@@ -331,4 +358,15 @@ func buildPhraseSetManager(ctx context.Context) (resource.PhraseSetManager, erro
 	manager := resource.NewPhraseSetManager(client)
 
 	return manager, nil
+}
+
+func prepareOutputFile(path string) error {
+	f, err := os.OpenFile(path, os.O_CREATE, os.FileMode(0o644))
+	if err != nil {
+		return fmt.Errorf("failed to open output file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("failed to close output file: %w", err)
+	}
+	return nil
 }
