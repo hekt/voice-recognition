@@ -10,9 +10,9 @@ import (
 	"time"
 
 	speech "cloud.google.com/go/speech/apiv2"
-	"github.com/hekt/voice-recognition/internal/actions/recognize"
 	"github.com/hekt/voice-recognition/internal/file"
 	"github.com/hekt/voice-recognition/internal/logger"
+	recognize "github.com/hekt/voice-recognition/internal/recognizer"
 	"github.com/hekt/voice-recognition/internal/resource"
 	"github.com/urfave/cli/v2"
 )
