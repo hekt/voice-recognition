@@ -80,6 +80,34 @@ func TestRestoreRecognizerFromProto(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "no default config",
+			args: args{
+				pb: &speechpb.Recognizer{
+					Name: "test",
+				},
+			},
+			want: &Recognizer{
+				Name: "test",
+			},
+		},
+		{
+			name: "no adaptation",
+			args: args{
+				pb: &speechpb.Recognizer{
+					Name: "test",
+					DefaultRecognitionConfig: &speechpb.RecognitionConfig{
+						Model:         "test-model",
+						LanguageCodes: []string{"ja-JP", "en-US"},
+					},
+				},
+			},
+			want: &Recognizer{
+				Name:          "test",
+				Model:         "test-model",
+				LanguageCodes: []string{"ja-JP", "en-US"},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

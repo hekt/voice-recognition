@@ -16,7 +16,22 @@ type Recognizer struct {
 }
 
 func RestoreRecognizerFromProto(pb *speechpb.Recognizer) *Recognizer {
-	config := pb.DefaultRecognitionConfig
+	r := &Recognizer{
+		Name:  pb.Name,
+		Value: fmt.Sprintf("%v", pb),
+	}
+
+	config := pb.GetDefaultRecognitionConfig()
+	if config == nil {
+		return r
+	}
+
+	r.Model = config.Model
+	r.LanguageCodes = config.LanguageCodes
+
+	if config.Adaptation == nil {
+		return r
+	}
 
 	phraseSets := make([]*PhraseSet, 0, len(config.Adaptation.PhraseSets))
 	for _, p := range config.Adaptation.PhraseSets {
@@ -29,12 +44,7 @@ func RestoreRecognizerFromProto(pb *speechpb.Recognizer) *Recognizer {
 			phraseSets = append(phraseSets, RestorePhraseSetFromProto(v.InlinePhraseSet))
 		}
 	}
+	r.PhraseSets = phraseSets
 
-	return &Recognizer{
-		Name:          pb.Name,
-		Model:         config.Model,
-		LanguageCodes: config.LanguageCodes,
-		PhraseSets:    phraseSets,
-		Value:         fmt.Sprintf("%v", pb),
-	}
+	return r
 }

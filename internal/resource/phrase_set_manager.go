@@ -119,9 +119,7 @@ func (m *phraseSetManager) List(ctx context.Context, args ListPhraseSetArgs) ([]
 			}
 			return nil, fmt.Errorf("failed to get next response: %w", err)
 		}
-		phraseSets = append(phraseSets, &PhraseSet{
-			Value: fmt.Sprintf("%v", resp),
-		})
+		phraseSets = append(phraseSets, RestorePhraseSetFromProto(resp))
 	}
 
 	return phraseSets, nil

@@ -119,10 +119,7 @@ func (m *recognizerManager) List(ctx context.Context, args ListRecognizerArgs) (
 			}
 			return nil, fmt.Errorf("failed to get next response: %w", err)
 		}
-
-		recognizers = append(recognizers, &Recognizer{
-			Value: fmt.Sprintf("%v", resp),
-		})
+		recognizers = append(recognizers, RestoreRecognizerFromProto(resp))
 	}
 
 	return recognizers, nil
