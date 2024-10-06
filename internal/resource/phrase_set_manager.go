@@ -33,10 +33,6 @@ type ListPhraseSetArgs struct {
 	ProjectID string
 }
 
-type PhraseSet struct {
-	Value string
-}
-
 type phraseSetManager struct {
 	client speech.Client
 }

@@ -32,10 +32,6 @@ type ListRecognizerArgs struct {
 	ProjectID string
 }
 
-type Recognizer struct {
-	Value string
-}
-
 type recognizerManager struct {
 	client speech.Client
 }
