@@ -54,8 +54,8 @@ func (r *AudioReceiver) Start(ctx context.Context) error {
 				continue
 			}
 
-			dst := make([]byte, 0, n)
-			r.audioCh <- append(dst, buf[:n]...)
+			// Send copied buffer to audio channel.
+			r.audioCh <- append(make([]byte, 0, n), buf[:n]...)
 		}
 	}
 }
