@@ -14,7 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/hekt/voice-recognition/internal/interfaces/speech"
-	"github.com/hekt/voice-recognition/internal/util"
+	"github.com/hekt/voice-recognition/internal/resource"
 )
 
 type recognizer struct {
@@ -79,7 +79,7 @@ func newRecognizer(
 		client,
 		sendStreamCh,
 		receiveStreamCh,
-		util.RecognizerFullname(projectID, recognizerName),
+		resource.RecognizerFullname(projectID, recognizerName),
 		reconnectInterval,
 	)
 	audioSender := NewAudioSender(audioReader, sendStreamCh, bufferSize)

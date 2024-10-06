@@ -7,3 +7,6 @@ import (
 //go:generate moq -rm -out speech_streaming_recognize_client_mock.go . Speech_StreamingRecognizeClient
 //lint:ignore ST1003 This name is provided by external package.
 type Speech_StreamingRecognizeClient = speechpb.Speech_StreamingRecognizeClient
+
+//go:generate moq -rm -out speech_server_mock.go . SpeechServer
+type SpeechServer = speechpb.SpeechServer

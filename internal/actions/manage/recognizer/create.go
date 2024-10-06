@@ -6,7 +6,7 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	"github.com/hekt/voice-recognition/internal/util"
+	"github.com/hekt/voice-recognition/internal/resource"
 )
 
 type CreateArgs struct {
@@ -27,13 +27,13 @@ func Create(ctx context.Context, args CreateArgs) error {
 	if args.PhraseSet != "" {
 		phraseSets = append(phraseSets, &speechpb.SpeechAdaptation_AdaptationPhraseSet{
 			Value: &speechpb.SpeechAdaptation_AdaptationPhraseSet_PhraseSet{
-				PhraseSet: util.PhraseSetFullname(args.ProjectID, args.PhraseSet),
+				PhraseSet: resource.PhraseSetFullname(args.ProjectID, args.PhraseSet),
 			},
 		})
 	}
 
 	op, err := client.CreateRecognizer(ctx, &speechpb.CreateRecognizerRequest{
-		Parent:       util.ResourceParent(args.ProjectID),
+		Parent:       resource.ParentName(args.ProjectID),
 		RecognizerId: args.RecognizerName,
 		Recognizer: &speechpb.Recognizer{
 			DisplayName: args.RecognizerName,

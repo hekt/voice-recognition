@@ -6,7 +6,7 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	"github.com/hekt/voice-recognition/internal/util"
+	"github.com/hekt/voice-recognition/internal/resource"
 )
 
 type UpdateArgs struct {
@@ -32,7 +32,7 @@ func Update(ctx context.Context, args UpdateArgs) error {
 
 	op, err := client.UpdatePhraseSet(ctx, &speechpb.UpdatePhraseSetRequest{
 		PhraseSet: &speechpb.PhraseSet{
-			Name:    util.PhraseSetFullname(args.ProjectID, args.PhraseSetName),
+			Name:    resource.PhraseSetFullname(args.ProjectID, args.PhraseSetName),
 			Phrases: phrases,
 			Boost:   args.Boost,
 		},

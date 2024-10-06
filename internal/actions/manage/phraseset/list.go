@@ -6,7 +6,7 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	"github.com/hekt/voice-recognition/internal/util"
+	"github.com/hekt/voice-recognition/internal/resource"
 	"google.golang.org/api/iterator"
 )
 
@@ -21,7 +21,7 @@ func List(ctx context.Context, args ListArgs) error {
 	}
 
 	iterResp := client.ListPhraseSets(ctx, &speechpb.ListPhraseSetsRequest{
-		Parent:      util.ResourceParent(args.ProjectID),
+		Parent:      resource.ParentName(args.ProjectID),
 		ShowDeleted: true,
 	})
 

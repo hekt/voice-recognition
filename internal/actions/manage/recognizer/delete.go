@@ -6,7 +6,7 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	"github.com/hekt/voice-recognition/internal/util"
+	"github.com/hekt/voice-recognition/internal/resource"
 )
 
 type DeleteArgs struct {
@@ -21,7 +21,7 @@ func Delete(ctx context.Context, args DeleteArgs) error {
 	}
 
 	op, err := client.DeleteRecognizer(ctx, &speechpb.DeleteRecognizerRequest{
-		Name: util.RecognizerFullname(args.ProjectID, args.RecognizerName),
+		Name: resource.RecognizerFullname(args.ProjectID, args.RecognizerName),
 	})
 	if err != nil {
 		return fmt.Errorf("failed to delete recognizer: %w", err)

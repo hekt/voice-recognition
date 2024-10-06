@@ -6,7 +6,7 @@ import (
 
 	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
-	"github.com/hekt/voice-recognition/internal/util"
+	"github.com/hekt/voice-recognition/internal/resource"
 )
 
 type CreateArgs struct {
@@ -37,7 +37,7 @@ func Create(ctx context.Context, args CreateArgs) error {
 			Boost:       args.Boost,
 		},
 		PhraseSetId: args.PhraseSetName,
-		Parent:      util.ResourceParent(args.ProjectID),
+		Parent:      resource.ParentName(args.ProjectID),
 	})
 
 	if err != nil {

@@ -1,10 +1,10 @@
-package util
+package resource
 
 import (
 	"testing"
 )
 
-func TestResourceParent(t *testing.T) {
+func TestParentName(t *testing.T) {
 	type args struct {
 		projectID string
 	}
@@ -23,8 +23,8 @@ func TestResourceParent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := ResourceParent(tt.args.projectID); got != tt.want {
-				t.Errorf("RecognizerParent() = %v, want %v", got, tt.want)
+			if got := ParentName(tt.args.projectID); got != tt.want {
+				t.Errorf("ParentName() = %v, want %v", got, tt.want)
 			}
 		})
 	}

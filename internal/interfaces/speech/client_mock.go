@@ -4,6 +4,7 @@
 package speech
 
 import (
+	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	"context"
 	"github.com/googleapis/gax-go/v2"
@@ -23,8 +24,32 @@ var _ Client = &ClientMock{}
 //			CloseFunc: func() error {
 //				panic("mock out the Close method")
 //			},
+//			CreatePhraseSetFunc: func(ctx context.Context, req *speechpb.CreatePhraseSetRequest, opts ...gax.CallOption) (*speech.CreatePhraseSetOperation, error) {
+//				panic("mock out the CreatePhraseSet method")
+//			},
+//			CreateRecognizerFunc: func(ctx context.Context, req *speechpb.CreateRecognizerRequest, opts ...gax.CallOption) (*speech.CreateRecognizerOperation, error) {
+//				panic("mock out the CreateRecognizer method")
+//			},
+//			DeletePhraseSetFunc: func(ctx context.Context, req *speechpb.DeletePhraseSetRequest, opts ...gax.CallOption) (*speech.DeletePhraseSetOperation, error) {
+//				panic("mock out the DeletePhraseSet method")
+//			},
+//			DeleteRecognizerFunc: func(ctx context.Context, req *speechpb.DeleteRecognizerRequest, opts ...gax.CallOption) (*speech.DeleteRecognizerOperation, error) {
+//				panic("mock out the DeleteRecognizer method")
+//			},
+//			ListPhraseSetsFunc: func(ctx context.Context, req *speechpb.ListPhraseSetsRequest, opts ...gax.CallOption) *speech.PhraseSetIterator {
+//				panic("mock out the ListPhraseSets method")
+//			},
+//			ListRecognizersFunc: func(ctx context.Context, req *speechpb.ListRecognizersRequest, opts ...gax.CallOption) *speech.RecognizerIterator {
+//				panic("mock out the ListRecognizers method")
+//			},
 //			StreamingRecognizeFunc: func(ctx context.Context, opts ...gax.CallOption) (speechpb.Speech_StreamingRecognizeClient, error) {
 //				panic("mock out the StreamingRecognize method")
+//			},
+//			UpdatePhraseSetFunc: func(ctx context.Context, req *speechpb.UpdatePhraseSetRequest, opts ...gax.CallOption) (*speech.UpdatePhraseSetOperation, error) {
+//				panic("mock out the UpdatePhraseSet method")
+//			},
+//			UpdateRecognizerFunc: func(ctx context.Context, req *speechpb.UpdateRecognizerRequest, opts ...gax.CallOption) (*speech.UpdateRecognizerOperation, error) {
+//				panic("mock out the UpdateRecognizer method")
 //			},
 //		}
 //
@@ -36,13 +61,91 @@ type ClientMock struct {
 	// CloseFunc mocks the Close method.
 	CloseFunc func() error
 
+	// CreatePhraseSetFunc mocks the CreatePhraseSet method.
+	CreatePhraseSetFunc func(ctx context.Context, req *speechpb.CreatePhraseSetRequest, opts ...gax.CallOption) (*speech.CreatePhraseSetOperation, error)
+
+	// CreateRecognizerFunc mocks the CreateRecognizer method.
+	CreateRecognizerFunc func(ctx context.Context, req *speechpb.CreateRecognizerRequest, opts ...gax.CallOption) (*speech.CreateRecognizerOperation, error)
+
+	// DeletePhraseSetFunc mocks the DeletePhraseSet method.
+	DeletePhraseSetFunc func(ctx context.Context, req *speechpb.DeletePhraseSetRequest, opts ...gax.CallOption) (*speech.DeletePhraseSetOperation, error)
+
+	// DeleteRecognizerFunc mocks the DeleteRecognizer method.
+	DeleteRecognizerFunc func(ctx context.Context, req *speechpb.DeleteRecognizerRequest, opts ...gax.CallOption) (*speech.DeleteRecognizerOperation, error)
+
+	// ListPhraseSetsFunc mocks the ListPhraseSets method.
+	ListPhraseSetsFunc func(ctx context.Context, req *speechpb.ListPhraseSetsRequest, opts ...gax.CallOption) *speech.PhraseSetIterator
+
+	// ListRecognizersFunc mocks the ListRecognizers method.
+	ListRecognizersFunc func(ctx context.Context, req *speechpb.ListRecognizersRequest, opts ...gax.CallOption) *speech.RecognizerIterator
+
 	// StreamingRecognizeFunc mocks the StreamingRecognize method.
 	StreamingRecognizeFunc func(ctx context.Context, opts ...gax.CallOption) (speechpb.Speech_StreamingRecognizeClient, error)
+
+	// UpdatePhraseSetFunc mocks the UpdatePhraseSet method.
+	UpdatePhraseSetFunc func(ctx context.Context, req *speechpb.UpdatePhraseSetRequest, opts ...gax.CallOption) (*speech.UpdatePhraseSetOperation, error)
+
+	// UpdateRecognizerFunc mocks the UpdateRecognizer method.
+	UpdateRecognizerFunc func(ctx context.Context, req *speechpb.UpdateRecognizerRequest, opts ...gax.CallOption) (*speech.UpdateRecognizerOperation, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
 		// Close holds details about calls to the Close method.
 		Close []struct {
+		}
+		// CreatePhraseSet holds details about calls to the CreatePhraseSet method.
+		CreatePhraseSet []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req *speechpb.CreatePhraseSetRequest
+			// Opts is the opts argument value.
+			Opts []gax.CallOption
+		}
+		// CreateRecognizer holds details about calls to the CreateRecognizer method.
+		CreateRecognizer []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req *speechpb.CreateRecognizerRequest
+			// Opts is the opts argument value.
+			Opts []gax.CallOption
+		}
+		// DeletePhraseSet holds details about calls to the DeletePhraseSet method.
+		DeletePhraseSet []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req *speechpb.DeletePhraseSetRequest
+			// Opts is the opts argument value.
+			Opts []gax.CallOption
+		}
+		// DeleteRecognizer holds details about calls to the DeleteRecognizer method.
+		DeleteRecognizer []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req *speechpb.DeleteRecognizerRequest
+			// Opts is the opts argument value.
+			Opts []gax.CallOption
+		}
+		// ListPhraseSets holds details about calls to the ListPhraseSets method.
+		ListPhraseSets []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req *speechpb.ListPhraseSetsRequest
+			// Opts is the opts argument value.
+			Opts []gax.CallOption
+		}
+		// ListRecognizers holds details about calls to the ListRecognizers method.
+		ListRecognizers []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req *speechpb.ListRecognizersRequest
+			// Opts is the opts argument value.
+			Opts []gax.CallOption
 		}
 		// StreamingRecognize holds details about calls to the StreamingRecognize method.
 		StreamingRecognize []struct {
@@ -51,9 +154,35 @@ type ClientMock struct {
 			// Opts is the opts argument value.
 			Opts []gax.CallOption
 		}
+		// UpdatePhraseSet holds details about calls to the UpdatePhraseSet method.
+		UpdatePhraseSet []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req *speechpb.UpdatePhraseSetRequest
+			// Opts is the opts argument value.
+			Opts []gax.CallOption
+		}
+		// UpdateRecognizer holds details about calls to the UpdateRecognizer method.
+		UpdateRecognizer []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Req is the req argument value.
+			Req *speechpb.UpdateRecognizerRequest
+			// Opts is the opts argument value.
+			Opts []gax.CallOption
+		}
 	}
 	lockClose              sync.RWMutex
+	lockCreatePhraseSet    sync.RWMutex
+	lockCreateRecognizer   sync.RWMutex
+	lockDeletePhraseSet    sync.RWMutex
+	lockDeleteRecognizer   sync.RWMutex
+	lockListPhraseSets     sync.RWMutex
+	lockListRecognizers    sync.RWMutex
 	lockStreamingRecognize sync.RWMutex
+	lockUpdatePhraseSet    sync.RWMutex
+	lockUpdateRecognizer   sync.RWMutex
 }
 
 // Close calls CloseFunc.
@@ -80,6 +209,246 @@ func (mock *ClientMock) CloseCalls() []struct {
 	mock.lockClose.RLock()
 	calls = mock.calls.Close
 	mock.lockClose.RUnlock()
+	return calls
+}
+
+// CreatePhraseSet calls CreatePhraseSetFunc.
+func (mock *ClientMock) CreatePhraseSet(ctx context.Context, req *speechpb.CreatePhraseSetRequest, opts ...gax.CallOption) (*speech.CreatePhraseSetOperation, error) {
+	if mock.CreatePhraseSetFunc == nil {
+		panic("ClientMock.CreatePhraseSetFunc: method is nil but Client.CreatePhraseSet was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Req  *speechpb.CreatePhraseSetRequest
+		Opts []gax.CallOption
+	}{
+		Ctx:  ctx,
+		Req:  req,
+		Opts: opts,
+	}
+	mock.lockCreatePhraseSet.Lock()
+	mock.calls.CreatePhraseSet = append(mock.calls.CreatePhraseSet, callInfo)
+	mock.lockCreatePhraseSet.Unlock()
+	return mock.CreatePhraseSetFunc(ctx, req, opts...)
+}
+
+// CreatePhraseSetCalls gets all the calls that were made to CreatePhraseSet.
+// Check the length with:
+//
+//	len(mockedClient.CreatePhraseSetCalls())
+func (mock *ClientMock) CreatePhraseSetCalls() []struct {
+	Ctx  context.Context
+	Req  *speechpb.CreatePhraseSetRequest
+	Opts []gax.CallOption
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Req  *speechpb.CreatePhraseSetRequest
+		Opts []gax.CallOption
+	}
+	mock.lockCreatePhraseSet.RLock()
+	calls = mock.calls.CreatePhraseSet
+	mock.lockCreatePhraseSet.RUnlock()
+	return calls
+}
+
+// CreateRecognizer calls CreateRecognizerFunc.
+func (mock *ClientMock) CreateRecognizer(ctx context.Context, req *speechpb.CreateRecognizerRequest, opts ...gax.CallOption) (*speech.CreateRecognizerOperation, error) {
+	if mock.CreateRecognizerFunc == nil {
+		panic("ClientMock.CreateRecognizerFunc: method is nil but Client.CreateRecognizer was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Req  *speechpb.CreateRecognizerRequest
+		Opts []gax.CallOption
+	}{
+		Ctx:  ctx,
+		Req:  req,
+		Opts: opts,
+	}
+	mock.lockCreateRecognizer.Lock()
+	mock.calls.CreateRecognizer = append(mock.calls.CreateRecognizer, callInfo)
+	mock.lockCreateRecognizer.Unlock()
+	return mock.CreateRecognizerFunc(ctx, req, opts...)
+}
+
+// CreateRecognizerCalls gets all the calls that were made to CreateRecognizer.
+// Check the length with:
+//
+//	len(mockedClient.CreateRecognizerCalls())
+func (mock *ClientMock) CreateRecognizerCalls() []struct {
+	Ctx  context.Context
+	Req  *speechpb.CreateRecognizerRequest
+	Opts []gax.CallOption
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Req  *speechpb.CreateRecognizerRequest
+		Opts []gax.CallOption
+	}
+	mock.lockCreateRecognizer.RLock()
+	calls = mock.calls.CreateRecognizer
+	mock.lockCreateRecognizer.RUnlock()
+	return calls
+}
+
+// DeletePhraseSet calls DeletePhraseSetFunc.
+func (mock *ClientMock) DeletePhraseSet(ctx context.Context, req *speechpb.DeletePhraseSetRequest, opts ...gax.CallOption) (*speech.DeletePhraseSetOperation, error) {
+	if mock.DeletePhraseSetFunc == nil {
+		panic("ClientMock.DeletePhraseSetFunc: method is nil but Client.DeletePhraseSet was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Req  *speechpb.DeletePhraseSetRequest
+		Opts []gax.CallOption
+	}{
+		Ctx:  ctx,
+		Req:  req,
+		Opts: opts,
+	}
+	mock.lockDeletePhraseSet.Lock()
+	mock.calls.DeletePhraseSet = append(mock.calls.DeletePhraseSet, callInfo)
+	mock.lockDeletePhraseSet.Unlock()
+	return mock.DeletePhraseSetFunc(ctx, req, opts...)
+}
+
+// DeletePhraseSetCalls gets all the calls that were made to DeletePhraseSet.
+// Check the length with:
+//
+//	len(mockedClient.DeletePhraseSetCalls())
+func (mock *ClientMock) DeletePhraseSetCalls() []struct {
+	Ctx  context.Context
+	Req  *speechpb.DeletePhraseSetRequest
+	Opts []gax.CallOption
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Req  *speechpb.DeletePhraseSetRequest
+		Opts []gax.CallOption
+	}
+	mock.lockDeletePhraseSet.RLock()
+	calls = mock.calls.DeletePhraseSet
+	mock.lockDeletePhraseSet.RUnlock()
+	return calls
+}
+
+// DeleteRecognizer calls DeleteRecognizerFunc.
+func (mock *ClientMock) DeleteRecognizer(ctx context.Context, req *speechpb.DeleteRecognizerRequest, opts ...gax.CallOption) (*speech.DeleteRecognizerOperation, error) {
+	if mock.DeleteRecognizerFunc == nil {
+		panic("ClientMock.DeleteRecognizerFunc: method is nil but Client.DeleteRecognizer was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Req  *speechpb.DeleteRecognizerRequest
+		Opts []gax.CallOption
+	}{
+		Ctx:  ctx,
+		Req:  req,
+		Opts: opts,
+	}
+	mock.lockDeleteRecognizer.Lock()
+	mock.calls.DeleteRecognizer = append(mock.calls.DeleteRecognizer, callInfo)
+	mock.lockDeleteRecognizer.Unlock()
+	return mock.DeleteRecognizerFunc(ctx, req, opts...)
+}
+
+// DeleteRecognizerCalls gets all the calls that were made to DeleteRecognizer.
+// Check the length with:
+//
+//	len(mockedClient.DeleteRecognizerCalls())
+func (mock *ClientMock) DeleteRecognizerCalls() []struct {
+	Ctx  context.Context
+	Req  *speechpb.DeleteRecognizerRequest
+	Opts []gax.CallOption
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Req  *speechpb.DeleteRecognizerRequest
+		Opts []gax.CallOption
+	}
+	mock.lockDeleteRecognizer.RLock()
+	calls = mock.calls.DeleteRecognizer
+	mock.lockDeleteRecognizer.RUnlock()
+	return calls
+}
+
+// ListPhraseSets calls ListPhraseSetsFunc.
+func (mock *ClientMock) ListPhraseSets(ctx context.Context, req *speechpb.ListPhraseSetsRequest, opts ...gax.CallOption) *speech.PhraseSetIterator {
+	if mock.ListPhraseSetsFunc == nil {
+		panic("ClientMock.ListPhraseSetsFunc: method is nil but Client.ListPhraseSets was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Req  *speechpb.ListPhraseSetsRequest
+		Opts []gax.CallOption
+	}{
+		Ctx:  ctx,
+		Req:  req,
+		Opts: opts,
+	}
+	mock.lockListPhraseSets.Lock()
+	mock.calls.ListPhraseSets = append(mock.calls.ListPhraseSets, callInfo)
+	mock.lockListPhraseSets.Unlock()
+	return mock.ListPhraseSetsFunc(ctx, req, opts...)
+}
+
+// ListPhraseSetsCalls gets all the calls that were made to ListPhraseSets.
+// Check the length with:
+//
+//	len(mockedClient.ListPhraseSetsCalls())
+func (mock *ClientMock) ListPhraseSetsCalls() []struct {
+	Ctx  context.Context
+	Req  *speechpb.ListPhraseSetsRequest
+	Opts []gax.CallOption
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Req  *speechpb.ListPhraseSetsRequest
+		Opts []gax.CallOption
+	}
+	mock.lockListPhraseSets.RLock()
+	calls = mock.calls.ListPhraseSets
+	mock.lockListPhraseSets.RUnlock()
+	return calls
+}
+
+// ListRecognizers calls ListRecognizersFunc.
+func (mock *ClientMock) ListRecognizers(ctx context.Context, req *speechpb.ListRecognizersRequest, opts ...gax.CallOption) *speech.RecognizerIterator {
+	if mock.ListRecognizersFunc == nil {
+		panic("ClientMock.ListRecognizersFunc: method is nil but Client.ListRecognizers was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Req  *speechpb.ListRecognizersRequest
+		Opts []gax.CallOption
+	}{
+		Ctx:  ctx,
+		Req:  req,
+		Opts: opts,
+	}
+	mock.lockListRecognizers.Lock()
+	mock.calls.ListRecognizers = append(mock.calls.ListRecognizers, callInfo)
+	mock.lockListRecognizers.Unlock()
+	return mock.ListRecognizersFunc(ctx, req, opts...)
+}
+
+// ListRecognizersCalls gets all the calls that were made to ListRecognizers.
+// Check the length with:
+//
+//	len(mockedClient.ListRecognizersCalls())
+func (mock *ClientMock) ListRecognizersCalls() []struct {
+	Ctx  context.Context
+	Req  *speechpb.ListRecognizersRequest
+	Opts []gax.CallOption
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Req  *speechpb.ListRecognizersRequest
+		Opts []gax.CallOption
+	}
+	mock.lockListRecognizers.RLock()
+	calls = mock.calls.ListRecognizers
+	mock.lockListRecognizers.RUnlock()
 	return calls
 }
 
@@ -116,5 +485,85 @@ func (mock *ClientMock) StreamingRecognizeCalls() []struct {
 	mock.lockStreamingRecognize.RLock()
 	calls = mock.calls.StreamingRecognize
 	mock.lockStreamingRecognize.RUnlock()
+	return calls
+}
+
+// UpdatePhraseSet calls UpdatePhraseSetFunc.
+func (mock *ClientMock) UpdatePhraseSet(ctx context.Context, req *speechpb.UpdatePhraseSetRequest, opts ...gax.CallOption) (*speech.UpdatePhraseSetOperation, error) {
+	if mock.UpdatePhraseSetFunc == nil {
+		panic("ClientMock.UpdatePhraseSetFunc: method is nil but Client.UpdatePhraseSet was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Req  *speechpb.UpdatePhraseSetRequest
+		Opts []gax.CallOption
+	}{
+		Ctx:  ctx,
+		Req:  req,
+		Opts: opts,
+	}
+	mock.lockUpdatePhraseSet.Lock()
+	mock.calls.UpdatePhraseSet = append(mock.calls.UpdatePhraseSet, callInfo)
+	mock.lockUpdatePhraseSet.Unlock()
+	return mock.UpdatePhraseSetFunc(ctx, req, opts...)
+}
+
+// UpdatePhraseSetCalls gets all the calls that were made to UpdatePhraseSet.
+// Check the length with:
+//
+//	len(mockedClient.UpdatePhraseSetCalls())
+func (mock *ClientMock) UpdatePhraseSetCalls() []struct {
+	Ctx  context.Context
+	Req  *speechpb.UpdatePhraseSetRequest
+	Opts []gax.CallOption
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Req  *speechpb.UpdatePhraseSetRequest
+		Opts []gax.CallOption
+	}
+	mock.lockUpdatePhraseSet.RLock()
+	calls = mock.calls.UpdatePhraseSet
+	mock.lockUpdatePhraseSet.RUnlock()
+	return calls
+}
+
+// UpdateRecognizer calls UpdateRecognizerFunc.
+func (mock *ClientMock) UpdateRecognizer(ctx context.Context, req *speechpb.UpdateRecognizerRequest, opts ...gax.CallOption) (*speech.UpdateRecognizerOperation, error) {
+	if mock.UpdateRecognizerFunc == nil {
+		panic("ClientMock.UpdateRecognizerFunc: method is nil but Client.UpdateRecognizer was just called")
+	}
+	callInfo := struct {
+		Ctx  context.Context
+		Req  *speechpb.UpdateRecognizerRequest
+		Opts []gax.CallOption
+	}{
+		Ctx:  ctx,
+		Req:  req,
+		Opts: opts,
+	}
+	mock.lockUpdateRecognizer.Lock()
+	mock.calls.UpdateRecognizer = append(mock.calls.UpdateRecognizer, callInfo)
+	mock.lockUpdateRecognizer.Unlock()
+	return mock.UpdateRecognizerFunc(ctx, req, opts...)
+}
+
+// UpdateRecognizerCalls gets all the calls that were made to UpdateRecognizer.
+// Check the length with:
+//
+//	len(mockedClient.UpdateRecognizerCalls())
+func (mock *ClientMock) UpdateRecognizerCalls() []struct {
+	Ctx  context.Context
+	Req  *speechpb.UpdateRecognizerRequest
+	Opts []gax.CallOption
+} {
+	var calls []struct {
+		Ctx  context.Context
+		Req  *speechpb.UpdateRecognizerRequest
+		Opts []gax.CallOption
+	}
+	mock.lockUpdateRecognizer.RLock()
+	calls = mock.calls.UpdateRecognizer
+	mock.lockUpdateRecognizer.RUnlock()
 	return calls
 }
