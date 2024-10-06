@@ -16,27 +16,30 @@ var _ io.Writer = (*DecoratedInterimWriter)(nil)
 
 type DecoratedInterimWriter struct {
 	Writer io.Writer
+	buf    bytes.Buffer
 }
 
 func (w *DecoratedInterimWriter) Write(p []byte) (n int, err error) {
-	buf := bytes.Buffer{}
-	buf.Write(clearScreen)
-	buf.Write(greenColor)
-	buf.Write(p)
-	buf.Write(resetColor)
+	w.buf.Reset()
+	w.buf.Write(clearScreen)
+	w.buf.Write(greenColor)
+	w.buf.Write(p)
+	w.buf.Write(resetColor)
 
-	return w.Writer.Write(buf.Bytes())
+	return w.Writer.Write(w.buf.Bytes())
 }
 
 var _ io.Writer = (*DecoratedResultWriter)(nil)
 
 type DecoratedResultWriter struct {
 	Writer io.Writer
+	buf    bytes.Buffer
 }
 
 func (w *DecoratedResultWriter) Write(p []byte) (n int, err error) {
-	buf := bytes.NewBuffer(newLine)
-	buf.Write(p)
+	w.buf.Reset()
+	w.buf.Write(newLine)
+	w.buf.Write(p)
 
-	return w.Writer.Write(buf.Bytes())
+	return w.Writer.Write(w.buf.Bytes())
 }
