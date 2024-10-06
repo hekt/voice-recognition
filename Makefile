@@ -9,7 +9,3 @@ gen:
 .PHONY: lint
 lint:
 	staticcheck ./...
-
-.PHONY: install-tools
-install-tools:
-	./scripts/install-tools.sh
