@@ -19,12 +19,15 @@ import (
 
 type Recognizer struct {
 	streamSupplier    StreamSupplierInterface
+	audioReceiver     AudioReceiverInterface
 	audioSender       AudioSenderInterface
 	reseponseReceiver ResponseReceiverInterface
 	responseProcessor ResponseProcessorInterface
 
 	// client は Speech-to-Text API のクライアント。
 	client speech.Client
+	// audioCh は音声データの受け渡しをする channel。
+	audioCh chan []byte
 	// responseCh はレスポンスデータの受け渡しをする channel。
 	responseCh chan *speechpb.StreamingRecognizeResponse
 	// sendStreamCh は送信用の stream を受け渡しする channel。
@@ -69,6 +72,7 @@ func New(
 	}
 
 	// not sure what is the appropriate buffer size.
+	audioCh := make(chan []byte, 10)
 	responseCh := make(chan *speechpb.StreamingRecognizeResponse, 10)
 	// if the stream is not taken out, there is no need to create new stream.
 	// so buffer size is set to 1.
@@ -82,7 +86,8 @@ func New(
 		resource.RecognizerFullname(projectID, recognizerName),
 		reconnectInterval,
 	)
-	audioSender := NewAudioSender(audioReader, sendStreamCh, bufferSize)
+	audioReceiver := NewAudioReceiver(audioReader, audioCh, bufferSize)
+	audioSender := NewAudioSender(audioCh, sendStreamCh)
 	responseReceiver := NewResponseReceiver(responseCh, receiveStreamCh)
 	responseProcessor := NewResponseProcessor(
 		&DecoratedResultWriter{Writer: resultWriter},
@@ -92,11 +97,13 @@ func New(
 
 	return &Recognizer{
 		streamSupplier:    streamSupplier,
+		audioReceiver:     audioReceiver,
 		audioSender:       audioSender,
 		reseponseReceiver: responseReceiver,
 		responseProcessor: responseProcessor,
 
 		client:          client,
+		audioCh:         audioCh,
 		responseCh:      responseCh,
 		sendStreamCh:    sendStreamCh,
 		receiveStreamCh: receiveStreamCh,
@@ -121,6 +128,13 @@ func (r *Recognizer) Start(ctx context.Context) error {
 
 	eg, ctx := errgroup.WithContext(ctx)
 
+	eg.Go(func() error {
+		defer close(r.audioCh)
+		if err := r.audioReceiver.Start(ctx); err != nil {
+			return fmt.Errorf("error occured in audio receiver: %w", err)
+		}
+		return nil
+	})
 	eg.Go(func() error {
 		defer close(r.sendStreamCh)
 		defer close(r.receiveStreamCh)

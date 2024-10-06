@@ -3,7 +3,6 @@ package recognizer
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
@@ -17,20 +16,17 @@ type AudioSenderInterface interface {
 var _ AudioSenderInterface = &AudioSender{}
 
 type AudioSender struct {
-	audioReader  io.Reader
+	audioCh      <-chan []byte
 	sendStreamCh <-chan speechpb.Speech_StreamingRecognizeClient
-	bufferSize   int
 }
 
 func NewAudioSender(
-	audioReader io.Reader,
+	audioCh <-chan []byte,
 	sendStreamCh <-chan speechpb.Speech_StreamingRecognizeClient,
-	bufferSize int,
 ) *AudioSender {
 	return &AudioSender{
-		audioReader:  audioReader,
+		audioCh:      audioCh,
 		sendStreamCh: sendStreamCh,
-		bufferSize:   bufferSize,
 	}
 }
 
@@ -47,7 +43,6 @@ func (s *AudioSender) Start(ctx context.Context) error {
 		}
 	}()
 
-	buf := make([]byte, s.bufferSize)
 	for {
 		select {
 		case <-ctx.Done():
@@ -65,23 +60,13 @@ func (s *AudioSender) Start(ctx context.Context) error {
 
 			stream = newStream
 			slog.Debug("AudioSender: stream switched")
-		default:
-			n, err := s.audioReader.Read(buf)
-			if err == io.EOF {
-				slog.Debug("AudioSender: EOF received")
-				return nil
+		case audio, ok := <-s.audioCh:
+			if !ok {
+				return fmt.Errorf("audio channel is closed")
 			}
-			if err != nil {
-				return fmt.Errorf("failed to read from stdin: %w", err)
-			}
-
-			if n == 0 {
-				continue
-			}
-
 			if err := stream.Send(&speechpb.StreamingRecognizeRequest{
 				StreamingRequest: &speechpb.StreamingRecognizeRequest_Audio{
-					Audio: buf[:n],
+					Audio: audio,
 				},
 			}); err != nil {
 				return fmt.Errorf("failed to send audio data: %w", err)

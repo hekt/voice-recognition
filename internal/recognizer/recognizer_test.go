@@ -168,11 +168,11 @@ func Test_New(t *testing.T) {
 				tt.args.interimWriter,
 			)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("newRecognizer() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr && got == nil {
-				t.Errorf("newRecognizer() = %v, want non-nil", got)
+				t.Errorf("New() = %v, want non-nil", got)
 			}
 		})
 	}
@@ -181,10 +181,12 @@ func Test_New(t *testing.T) {
 func Test_Recognizer_Start(t *testing.T) {
 	type fields struct {
 		streamSupplier    StreamSupplierInterface
+		audioReceiver     AudioReceiverInterface
 		audioSender       AudioSenderInterface
 		reseponseReceiver ResponseReceiverInterface
 		responseProcessor ResponseProcessorInterface
 		client            speech.Client
+		audioCh           chan []byte
 		responseCh        chan *speechpb.StreamingRecognizeResponse
 		sendStreamCh      chan speechpb.Speech_StreamingRecognizeClient
 		receiveStreamCh   chan speechpb.Speech_StreamingRecognizeClient
@@ -205,6 +207,11 @@ func Test_Recognizer_Start(t *testing.T) {
 						return nil
 					},
 				},
+				audioReceiver: &AudioReceiverInterfaceMock{
+					StartFunc: func(ctx context.Context) error {
+						return nil
+					},
+				},
 				audioSender: &AudioSenderInterfaceMock{
 					StartFunc: func(ctx context.Context) error {
 						return nil
@@ -225,6 +232,7 @@ func Test_Recognizer_Start(t *testing.T) {
 						return nil
 					},
 				},
+				audioCh:         make(chan []byte),
 				responseCh:      make(chan *speechpb.StreamingRecognizeResponse),
 				sendStreamCh:    make(chan speechpb.Speech_StreamingRecognizeClient),
 				receiveStreamCh: make(chan speechpb.Speech_StreamingRecognizeClient),
@@ -242,6 +250,11 @@ func Test_Recognizer_Start(t *testing.T) {
 						return errors.New("test error")
 					},
 				},
+				audioReceiver: &AudioReceiverInterfaceMock{
+					StartFunc: func(ctx context.Context) error {
+						return nil
+					},
+				},
 				audioSender: &AudioSenderInterfaceMock{
 					StartFunc: func(ctx context.Context) error {
 						return nil
@@ -262,6 +275,7 @@ func Test_Recognizer_Start(t *testing.T) {
 						return nil
 					},
 				},
+				audioCh:         make(chan []byte),
 				responseCh:      make(chan *speechpb.StreamingRecognizeResponse),
 				sendStreamCh:    make(chan speechpb.Speech_StreamingRecognizeClient),
 				receiveStreamCh: make(chan speechpb.Speech_StreamingRecognizeClient),
@@ -273,10 +287,12 @@ func Test_Recognizer_Start(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Recognizer{
 				streamSupplier:    tt.fields.streamSupplier,
+				audioReceiver:     tt.fields.audioReceiver,
 				audioSender:       tt.fields.audioSender,
 				reseponseReceiver: tt.fields.reseponseReceiver,
 				responseProcessor: tt.fields.responseProcessor,
 				client:            tt.fields.client,
+				audioCh:           tt.fields.audioCh,
 				responseCh:        tt.fields.responseCh,
 				sendStreamCh:      tt.fields.sendStreamCh,
 				receiveStreamCh:   tt.fields.receiveStreamCh,

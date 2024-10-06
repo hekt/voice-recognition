@@ -3,7 +3,7 @@ package recognizer
 import (
 	"bytes"
 	"context"
-	"io"
+	"errors"
 	"reflect"
 	"sync"
 	"testing"
@@ -14,14 +14,13 @@ import (
 
 func TestNewAudioSender(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
+		audioCh := make(chan []byte)
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
-		audioReader := &bytes.Buffer{}
-		s := NewAudioSender(audioReader, sendStreamCh, 1024)
+		s := NewAudioSender(audioCh, sendStreamCh)
 
 		want := &AudioSender{
-			audioReader:  audioReader,
+			audioCh:      audioCh,
 			sendStreamCh: sendStreamCh,
-			bufferSize:   1024,
 		}
 		if !reflect.DeepEqual(s, want) {
 			t.Errorf("NewAudioSender() = %v, want %v", s, want)
@@ -29,28 +28,11 @@ func TestNewAudioSender(t *testing.T) {
 	})
 }
 
-type audioSenderTestReader struct {
-	bufCh chan []byte
-	eofCh <-chan struct{}
-}
-
-func (r *audioSenderTestReader) Read(p []byte) (int, error) {
-	select {
-	case <-r.eofCh:
-		return 0, io.EOF
-	case buf := <-r.bufCh:
-		n := copy(p, buf)
-		if n < len(buf) {
-			r.bufCh <- buf[n:]
-		}
-		return n, nil
-	}
-}
-
-var _ io.Reader = &audioSenderTestReader{}
-
 func Test_audioSender_Start(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
 		expectedTotalSendCallsCount := 3
 		expectedTotalCloseSendCallsCount := 2
 
@@ -80,19 +62,12 @@ func Test_audioSender_Start(t *testing.T) {
 		stream1 := crateStreamMock()
 		stream2 := crateStreamMock()
 
-		chunkSize := 16
-		bufCh := make(chan []byte)
-		eofCh := make(chan struct{})
-		audioReader := &audioSenderTestReader{
-			bufCh: bufCh,
-			eofCh: eofCh,
-		}
+		audioCh := make(chan []byte, 3)
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 2)
 
 		s := &AudioSender{
-			audioReader:  audioReader,
+			audioCh:      audioCh,
 			sendStreamCh: sendStreamCh,
-			bufferSize:   chunkSize,
 		}
 
 		var wg sync.WaitGroup
@@ -100,48 +75,28 @@ func Test_audioSender_Start(t *testing.T) {
 		var got error
 		go func() {
 			defer wg.Done()
-			got = s.Start(context.Background())
+			got = s.Start(ctx)
 		}()
 
-		firstChunk := bytes.Repeat([]byte("a"), chunkSize)
-		secondChunk := bytes.Repeat([]byte("b"), chunkSize)
+		firstChunk := bytes.Repeat([]byte("a"), 16)
+		secondChunk := bytes.Repeat([]byte("b"), 16)
 		thirdChunk := []byte("c")
 
-		// Send initial stream1 to AudioSender.
 		sendStreamCh <- stream1
-
-		// Send first data chunk to AudioSender.
-		bufCh <- firstChunk
-
-		// Wait until the first Send() call is made on stream1.
+		audioCh <- firstChunk
+		<-sendCalls
+		audioCh <- secondChunk
+		<-sendCalls
+		sendStreamCh <- stream2
+		<-closeSendCalls
+		audioCh <- thirdChunk
 		<-sendCalls
 
-		// At this point, AudioSender is waiting for the next Read() result.
-
-		// Send stream2 to AudioSender while it's waiting for Read().
-		sendStreamCh <- stream2
-
-		// AudioSender is still waiting for Read() result; stream not switched yet.
-
-		// Send second data chunk to AudioSender.
-		// AudioSender reads the data, sends it to stream1, then checks select and switches to stream2.
-		bufCh <- secondChunk
-
-		// Wait until the CloseSend() call is made on stream1.
-		<-closeSendCalls
-
-		// Now, AudioSender has switched to stream2.
-
-		// Send final data chunk to AudioSender.
-		bufCh <- thirdChunk
-
-		// Signal EOF to AudioSender to stop reading.
-		eofCh <- struct{}{}
-
+		cancel()
 		wg.Wait()
 
-		if got != nil {
-			t.Errorf("audioSender.Start() = %v, want nil", got)
+		if !errors.Is(got, context.Canceled) {
+			t.Errorf("audioSender.Start() error = %v, want %v", got, context.Canceled)
 		}
 		wantSent := string(firstChunk) + string(secondChunk) + string(thirdChunk)
 		if got := sentBuf.String(); got != wantSent {
