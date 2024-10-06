@@ -2,6 +2,7 @@ package resource
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"cloud.google.com/go/longrunning/autogen/longrunningpb"
@@ -11,6 +12,8 @@ import (
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	myspeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
 	"github.com/hekt/voice-recognition/internal/testutil"
+	"google.golang.org/genproto/googleapis/rpc/code"
+	"google.golang.org/genproto/googleapis/rpc/status"
 )
 
 func TestNewRecognizerManager(t *testing.T) {
@@ -67,6 +70,53 @@ func Test_recognizerManager_Create(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "error on calling rpc",
+			server: &myspeechpb.SpeechServerMock{
+				CreateRecognizerFunc: func(
+					_ context.Context,
+					_ *speechpb.CreateRecognizerRequest,
+				) (*longrunningpb.Operation, error) {
+					return nil, errors.New("rpc error")
+				},
+			},
+			args: args{
+				args: CreateRecognizerArgs{
+					ProjectID:      "project-id",
+					RecognizerName: "recognizer-name",
+					Model:          "model",
+					LanguageCode:   "language-code",
+					PhraseSet:      "phrase-set",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error on waiting for operation",
+			server: &myspeechpb.SpeechServerMock{
+				CreateRecognizerFunc: func(
+					_ context.Context,
+					_ *speechpb.CreateRecognizerRequest,
+				) (*longrunningpb.Operation, error) {
+					return &longrunningpb.Operation{
+						Done: true,
+						Result: &longrunningpb.Operation_Error{
+							Error: &status.Status{Code: int32(code.Code_UNKNOWN)},
+						},
+					}, nil
+				},
+			},
+			args: args{
+				args: CreateRecognizerArgs{
+					ProjectID:      "project-id",
+					RecognizerName: "recognizer-name",
+					Model:          "model",
+					LanguageCode:   "language-code",
+					PhraseSet:      "phrase-set",
+				},
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -114,6 +164,47 @@ func Test_recognizerManager_Delete(t *testing.T) {
 				},
 			},
 			wantErr: false,
+		},
+		{
+			name: "error on calling rpc",
+			server: &myspeechpb.SpeechServerMock{
+				DeleteRecognizerFunc: func(
+					_ context.Context,
+					_ *speechpb.DeleteRecognizerRequest,
+				) (*longrunningpb.Operation, error) {
+					return nil, errors.New("rpc error")
+				},
+			},
+			args: args{
+				args: DeleteRecognizerArgs{
+					ProjectID:      "project-id",
+					RecognizerName: "recognizer-name",
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "error on waiting for operation",
+			server: &myspeechpb.SpeechServerMock{
+				DeleteRecognizerFunc: func(
+					_ context.Context,
+					_ *speechpb.DeleteRecognizerRequest,
+				) (*longrunningpb.Operation, error) {
+					return &longrunningpb.Operation{
+						Done: true,
+						Result: &longrunningpb.Operation_Error{
+							Error: &status.Status{Code: int32(code.Code_UNKNOWN)},
+						},
+					}, nil
+				},
+			},
+			args: args{
+				args: DeleteRecognizerArgs{
+					ProjectID:      "project-id",
+					RecognizerName: "recognizer-name",
+				},
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -164,6 +255,23 @@ func Test_recognizerManager_List(t *testing.T) {
 			},
 			wantCount: 3,
 			wantErr:   false,
+		},
+		{
+			name: "error on calling rpc",
+			server: &myspeechpb.SpeechServerMock{
+				ListRecognizersFunc: func(
+					_ context.Context,
+					_ *speechpb.ListRecognizersRequest,
+				) (*speechpb.ListRecognizersResponse, error) {
+					return nil, errors.New("rpc error")
+				},
+			},
+			args: args{
+				args: ListRecognizerArgs{
+					ProjectID: "project-id",
+				},
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
