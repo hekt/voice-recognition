@@ -33,7 +33,7 @@ type Recognizer struct {
 	receiveStreamCh chan speechpb.Speech_StreamingRecognizeClient
 }
 
-func NewRecognizer(
+func New(
 	projectID string,
 	recognizerName string,
 	reconnectInterval time.Duration,

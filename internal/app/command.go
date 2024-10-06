@@ -12,7 +12,7 @@ import (
 	speech "cloud.google.com/go/speech/apiv2"
 	"github.com/hekt/voice-recognition/internal/file"
 	"github.com/hekt/voice-recognition/internal/logger"
-	recognize "github.com/hekt/voice-recognition/internal/recognizer"
+	"github.com/hekt/voice-recognition/internal/recognizer"
 	"github.com/hekt/voice-recognition/internal/resource"
 	"github.com/urfave/cli/v2"
 )
@@ -66,7 +66,7 @@ func NewRecognizeCommand() *cli.Command {
 				return fmt.Errorf("failed to create speech client: %w", err)
 			}
 
-			recognizer, err := recognize.NewRecognizer(
+			recognizer, err := recognizer.New(
 				cCtx.String(projectFlag.Name),
 				cCtx.String(recognizerFlag.Name),
 				cCtx.Duration("interval"),

@@ -12,7 +12,7 @@ import (
 	"github.com/hekt/voice-recognition/internal/interfaces/speech"
 )
 
-func Test_NewRecognizer(t *testing.T) {
+func Test_New(t *testing.T) {
 	type args struct {
 		projectID         string
 		recognizerName    string
@@ -157,7 +157,7 @@ func Test_NewRecognizer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewRecognizer(
+			got, err := New(
 				tt.args.projectID,
 				tt.args.recognizerName,
 				tt.args.reconnectInterval,
