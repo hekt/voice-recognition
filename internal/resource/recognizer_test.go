@@ -10,7 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	myspeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
-	"github.com/hekt/voice-recognition/testutil"
+	"github.com/hekt/voice-recognition/internal/testutil"
 )
 
 func TestNewRecognizerManager(t *testing.T) {
