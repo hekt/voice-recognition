@@ -1,15 +1,16 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
-	"github.com/hekt/voice-recognition/internal/actions/manage/phraseset"
-	"github.com/hekt/voice-recognition/internal/actions/manage/recognizer"
+	speech "cloud.google.com/go/speech/apiv2"
 	"github.com/hekt/voice-recognition/internal/actions/recognize"
 	"github.com/hekt/voice-recognition/internal/logger"
+	"github.com/hekt/voice-recognition/internal/resource"
 	"github.com/urfave/cli/v2"
 )
 
@@ -77,19 +78,31 @@ func NewRecognizerCreateCommand() *cli.Command {
 			phraseSetFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
+			manager, err := buildRecognizerManager(cCtx.Context)
+			if err != nil {
+				return fmt.Errorf("failed to build recognizer manager: %w", err)
+			}
+
 			// TODO support multiple language code
 			languageCode := ""
 			if fs := cCtx.StringSlice(languageCodeFlag.Name); len(fs) > 0 {
 				languageCode = fs[0]
 			}
 
-			return recognizer.Create(cCtx.Context, recognizer.CreateArgs{
+			args := resource.CreateRecognizerArgs{
 				ProjectID:      cCtx.String(projectFlag.Name),
 				RecognizerName: cCtx.String(recognizerFlag.Name),
 				Model:          cCtx.String(modelFlag.Name),
 				LanguageCode:   languageCode,
 				PhraseSet:      cCtx.String(phraseSetFlag.Name),
-			})
+			}
+			if err := manager.Create(cCtx.Context, args); err != nil {
+				return fmt.Errorf("failed to create recognizer: %w", err)
+			}
+
+			fmt.Println("Recognizer created")
+
+			return nil
 		},
 	}
 }
@@ -104,10 +117,22 @@ func NewRecognizerDeleteCommand() *cli.Command {
 			requiredRecognizerFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
-			return recognizer.Delete(cCtx.Context, recognizer.DeleteArgs{
+			manager, err := buildRecognizerManager(cCtx.Context)
+			if err != nil {
+				return fmt.Errorf("failed to build recognizer manager: %w", err)
+			}
+
+			args := resource.DeleteRecognizerArgs{
 				ProjectID:      cCtx.String(projectFlag.Name),
 				RecognizerName: cCtx.String(recognizerFlag.Name),
-			})
+			}
+			if err := manager.Delete(cCtx.Context, args); err != nil {
+				return fmt.Errorf("failed to delete recognizer: %w", err)
+			}
+
+			fmt.Println("Recognizer deleted")
+
+			return nil
 		},
 	}
 }
@@ -121,9 +146,24 @@ func NewRecognizerListCommand() *cli.Command {
 			requiredProjectFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
-			return recognizer.List(cCtx.Context, recognizer.ListArgs{
+			manager, err := buildRecognizerManager(cCtx.Context)
+			if err != nil {
+				return fmt.Errorf("failed to build recognizer manager: %w", err)
+			}
+
+			args := resource.ListRecognizerArgs{
 				ProjectID: cCtx.String(projectFlag.Name),
-			})
+			}
+			recognizers, err := manager.List(cCtx.Context, args)
+			if err != nil {
+				return fmt.Errorf("failed to list recognizers: %w", err)
+			}
+
+			for _, recognizer := range recognizers {
+				fmt.Println(recognizer.Value)
+			}
+
+			return nil
 		},
 	}
 }
@@ -141,6 +181,11 @@ func NewPhraseSetCreateCommand() *cli.Command {
 			boostFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
+			manager, err := buildPhraseSetManager(cCtx.Context)
+			if err != nil {
+				return fmt.Errorf("failed to build phrase set manager: %w", err)
+			}
+
 			rawPhrases := append(
 				strings.Split(cCtx.String(phrasesFlag.Name), ","),
 				cCtx.StringSlice(phraseFlag.Name)...,
@@ -156,12 +201,19 @@ func NewPhraseSetCreateCommand() *cli.Command {
 				return fmt.Errorf("no valid phrases provided")
 			}
 
-			return phraseset.Create(cCtx.Context, phraseset.CreateArgs{
+			args := resource.CreatePhraseSetArgs{
 				ProjectID:     cCtx.String(projectFlag.Name),
 				PhraseSetName: cCtx.String(phraseSetFlag.Name),
 				Phrases:       phrases,
 				Boost:         float32(cCtx.Float64(boostFlag.Name)),
-			})
+			}
+			if err := manager.Create(cCtx.Context, args); err != nil {
+				return fmt.Errorf("failed to create phrase set: %w", err)
+			}
+
+			fmt.Println("Phrase set created")
+
+			return nil
 		},
 	}
 }
@@ -179,6 +231,11 @@ func NewPhraseSetUpdateCommand() *cli.Command {
 			boostFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
+			manager, err := buildPhraseSetManager(cCtx.Context)
+			if err != nil {
+				return fmt.Errorf("failed to build phrase set manager: %w", err)
+			}
+
 			rawPhrases := append(
 				strings.Split(cCtx.String(phrasesFlag.Name), ","),
 				cCtx.StringSlice(phraseFlag.Name)...,
@@ -194,12 +251,19 @@ func NewPhraseSetUpdateCommand() *cli.Command {
 				return fmt.Errorf("no valid phrases provided")
 			}
 
-			return phraseset.Update(cCtx.Context, phraseset.UpdateArgs{
+			args := resource.UpdatePhraseSetArgs{
 				ProjectID:     cCtx.String(projectFlag.Name),
 				PhraseSetName: cCtx.String(phraseSetFlag.Name),
 				Phrases:       phrases,
 				Boost:         float32(cCtx.Float64(boostFlag.Name)),
-			})
+			}
+			if err := manager.Update(cCtx.Context, args); err != nil {
+				return fmt.Errorf("failed to update phrase set: %w", err)
+			}
+
+			fmt.Println("Phrase set updated")
+
+			return nil
 		},
 	}
 }
@@ -213,9 +277,24 @@ func NewPhraseSetListCommand() *cli.Command {
 			requiredProjectFlag,
 		},
 		Action: func(cCtx *cli.Context) error {
-			return phraseset.List(cCtx.Context, phraseset.ListArgs{
+			manager, err := buildPhraseSetManager(cCtx.Context)
+			if err != nil {
+				return fmt.Errorf("failed to build phrase set manager: %w", err)
+			}
+
+			args := resource.ListPhraseSetArgs{
 				ProjectID: cCtx.String(projectFlag.Name),
-			})
+			}
+			phraseSets, err := manager.List(cCtx.Context, args)
+			if err != nil {
+				return fmt.Errorf("failed to list phrase sets: %w", err)
+			}
+
+			for _, phraseSet := range phraseSets {
+				fmt.Println(phraseSet.Value)
+			}
+
+			return nil
 		},
 	}
 }
@@ -230,4 +309,26 @@ func setLogger(level slog.Level) error {
 	}
 	slog.SetDefault(logger)
 	return nil
+}
+
+func buildRecognizerManager(ctx context.Context) (resource.RecognizerManager, error) {
+	client, err := speech.NewClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create speech client: %w", err)
+	}
+
+	manager := resource.NewRecognizerManager(client)
+
+	return manager, nil
+}
+
+func buildPhraseSetManager(ctx context.Context) (resource.PhraseSetManager, error) {
+	client, err := speech.NewClient(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create speech client: %w", err)
+	}
+
+	manager := resource.NewPhraseSetManager(client)
+
+	return manager, nil
 }
