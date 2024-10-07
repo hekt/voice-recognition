@@ -3,10 +3,11 @@ package recognizer
 import (
 	"bytes"
 	"context"
-	"io"
 	"reflect"
 	"sync"
 	"testing"
+
+	"github.com/hekt/voice-recognition/internal/testutil"
 )
 
 func TestNewAudioReceiver(t *testing.T) {
@@ -26,35 +27,12 @@ func TestNewAudioReceiver(t *testing.T) {
 	})
 }
 
-type audioReceiverTestReader struct {
-	bufCh chan []byte
-	eofCh <-chan struct{}
-}
-
-func (r *audioReceiverTestReader) Read(p []byte) (int, error) {
-	select {
-	case <-r.eofCh:
-		return 0, io.EOF
-	case buf := <-r.bufCh:
-		n := copy(p, buf)
-		if n < len(buf) {
-			r.bufCh <- buf[n:]
-		}
-		return n, nil
-	}
-}
-
-var _ io.Reader = &audioReceiverTestReader{}
-
 func Test_AudioReceiver_Start(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		chunkSize := 16
-		bufCh := make(chan []byte)
-		eofCh := make(chan struct{})
-		audioReader := &audioReceiverTestReader{
-			bufCh: bufCh,
-			eofCh: eofCh,
-		}
+		audioReader := testutil.NewChannelReader()
+		bufCh := audioReader.BufCh
+		eofCh := audioReader.EOFCh
 		audioCh := make(chan []byte, 3)
 
 		r := &AudioReceiver{
