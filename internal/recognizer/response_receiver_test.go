@@ -2,7 +2,6 @@ package recognizer
 
 import (
 	"context"
-	"errors"
 	"io"
 	"reflect"
 	"testing"
@@ -36,35 +35,26 @@ func Test_responseReceiver_Start(t *testing.T) {
 			resp *speechpb.StreamingRecognizeResponse
 			err  error
 		}
-		stream1RecvCalls := 0
-		stream1Responses := []response{
-			{&speechpb.StreamingRecognizeResponse{}, nil},
-			{nil, io.EOF},
-			{nil, errors.New("unexpected error")}, // ハンドリングができていればこのレスポンスは取得されない
-		}
+		response1 := &speechpb.StreamingRecognizeResponse{}
+		stream1ResponseCh := make(chan *response, 2)
+		stream1ResponseCh <- &response{response1, nil}
+		stream1ResponseCh <- &response{nil, io.EOF}
+		close(stream1ResponseCh)
 		stream1 := &ispeechpb.Speech_StreamingRecognizeClientMock{
 			RecvFunc: func() (*speechpb.StreamingRecognizeResponse, error) {
-				if stream1RecvCalls > len(stream1Responses) {
-					t.Fatalf("unexpected call to Recv on stream1: %d", stream1RecvCalls)
-				}
-				res := stream1Responses[stream1RecvCalls]
-				stream1RecvCalls++
+				res := <-stream1ResponseCh
 				return res.resp, res.err
 			},
 		}
 
-		stream2RecvCalls := 0
-		stream2Responses := []response{
-			{&speechpb.StreamingRecognizeResponse{}, nil},
-			{nil, status.Error(codes.Canceled, "canceled")},
-		}
+		response2 := &speechpb.StreamingRecognizeResponse{}
+		stream2ResponseCh := make(chan *response, 2)
+		stream2ResponseCh <- &response{response2, nil}
+		stream2ResponseCh <- &response{nil, status.Error(codes.Canceled, "canceled")}
+		close(stream2ResponseCh)
 		stream2 := &ispeechpb.Speech_StreamingRecognizeClientMock{
 			RecvFunc: func() (*speechpb.StreamingRecognizeResponse, error) {
-				if stream2RecvCalls > len(stream2Responses) {
-					t.Fatalf("unexpected call to Recv on stream2: %d", stream2RecvCalls)
-				}
-				res := stream2Responses[stream2RecvCalls]
-				stream2RecvCalls++
+				res := <-stream2ResponseCh
 				return res.resp, res.err
 			},
 		}
@@ -88,10 +78,10 @@ func Test_responseReceiver_Start(t *testing.T) {
 			t.Errorf("unexpected number of responses: got %d, want %d", len(responseCh), 2)
 			return
 		}
-		if got, want := <-responseCh, stream1Responses[0].resp; got != want {
+		if got, want := <-responseCh, response1; got != want {
 			t.Errorf("unexpected response: got %v, want %v", got, want)
 		}
-		if got, want := <-responseCh, stream2Responses[0].resp; got != want {
+		if got, want := <-responseCh, response2; got != want {
 			t.Errorf("unexpected response: got %v, want %v", got, want)
 		}
 	})
