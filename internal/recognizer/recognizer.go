@@ -146,7 +146,7 @@ func (r *Recognizer) Start(ctx context.Context) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
-		if err := r.processMonitor.Start(ctx, stop); err != nil {
+		if err := r.processMonitor.Start(ctx); err != nil {
 			return fmt.Errorf("error occured in process monitor: %w", err)
 		}
 		return nil

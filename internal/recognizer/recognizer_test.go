@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	myspeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
+	"github.com/hekt/voice-recognition/internal/testutil"
 )
 
 func Test_New(t *testing.T) {
@@ -205,7 +206,7 @@ func Test_Recognizer_Start(t *testing.T) {
 					},
 				},
 				processMonitor: &ProcessMonitorInterfaceMock{
-					StartFunc: func(context.Context, context.CancelFunc) error {
+					StartFunc: func(context.Context) error {
 						return nil
 					},
 				},
@@ -254,7 +255,7 @@ func Test_Recognizer_Start(t *testing.T) {
 					},
 				},
 				processMonitor: &ProcessMonitorInterfaceMock{
-					StartFunc: func(context.Context, context.CancelFunc) error {
+					StartFunc: func(context.Context) error {
 						return nil
 					},
 				},
@@ -296,120 +297,9 @@ func Test_Recognizer_Start(t *testing.T) {
 }
 
 func Test_Recognizer_Start_Dataflow(t *testing.T) {
-	// t.Run("read,send", func(t *testing.T) {
-	// 	// io reader
-	// 	audioReader := testutil.NewChannelReader()
-
-	// 	// channels
-	// 	audioCh := make(chan []byte)
-	// 	sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
-	// 	receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
-	// 	responseCh := make(chan *speechpb.StreamingRecognizeResponse)
-	// 	processCh := make(chan struct{})
-
-	// 	// clients
-	// 	sendCalls := make(chan struct{})
-	// 	closeSendCalls := make(chan struct{})
-	// 	streamMock := &myspeechpb.Speech_StreamingRecognizeClientMock{
-	// 		SendFunc: func(*speechpb.StreamingRecognizeRequest) error {
-	// 			defer func() { sendCalls <- struct{}{} }()
-	// 			return nil
-	// 		},
-	// 		CloseSendFunc: func() error {
-	// 			defer func() { closeSendCalls <- struct{}{} }()
-	// 			return nil
-	// 		},
-	// 	}
-	// 	clientCloseCalls := make(chan struct{})
-	// 	clientMock := &myspeech.ClientMock{
-	// 		CloseFunc: func() error {
-	// 			defer func() { clientCloseCalls <- struct{}{} }()
-	// 			return nil
-	// 		},
-	// 	}
-
-	// 	// workers
-	// 	audioReceiver := NewAudioReceiver(audioReader, audioCh, 4)
-	// 	audioSender := NewAudioSender(audioCh, sendStreamCh)
-	// 	streamSupplier := &StreamSupplierInterfaceMock{
-	// 		SupplyFunc: func(context.Context) error {
-	// 			return nil
-	// 		},
-	// 		StartFunc: func(context.Context) error {
-	// 			return nil
-	// 		},
-	// 	}
-	// 	responseReceiver := &ResponseReceiverInterfaceMock{
-	// 		StartFunc: func(context.Context) error {
-	// 			return nil
-	// 		},
-	// 	}
-	// 	responseProcessor := &ResponseProcessorInterfaceMock{
-	// 		StartFunc: func(context.Context) error {
-	// 			return nil
-	// 		},
-	// 	}
-	// 	processMonitor := &ProcessMonitorInterfaceMock{
-	// 		StartFunc: func(context.Context, context.CancelFunc) error {
-	// 			return nil
-	// 		},
-	// 	}
-
-	// 	r := &Recognizer{
-	// 		streamSupplier:    streamSupplier,
-	// 		audioReceiver:     audioReceiver,
-	// 		audioSender:       audioSender,
-	// 		reseponseReceiver: responseReceiver,
-	// 		responseProcessor: responseProcessor,
-	// 		processMonitor:    processMonitor,
-	// 		client:            clientMock,
-	// 		audioCh:           audioCh,
-	// 		responseCh:        responseCh,
-	// 		sendStreamCh:      sendStreamCh,
-	// 		receiveStreamCh:   receiveStreamCh,
-	// 		processCh:         processCh,
-	// 	}
-
-	// 	ctx, cancel := context.WithCancel(context.Background())
-	// 	var wg sync.WaitGroup
-	// 	wg.Add(1)
-	// 	var got error
-	// 	go func() {
-	// 		defer wg.Done()
-	// 		got = r.Start(ctx)
-	// 	}()
-
-	// 	// Suplly stream to AudioSender.
-	// 	sendStreamCh <- streamMock
-
-	// 	// Send bytes to reader to be read by AudioReceiver.
-	// 	audioReader.BufCh <- bytes.Repeat([]byte("a"), 4)
-	// 	// AudioReceiver reads bytes and sends to audioCh.
-	// 	// AudioSender reads bytes from audioCh and sends to stream.
-	// 	<-sendCalls
-
-	// 	// Send EOF to reader.
-	// 	audioReader.EOFCh <- struct{}{}
-	// 	// AudioReceiver reads EOF.
-
-	// 	// Close context to stop recognizer.
-	// 	cancel()
-	// 	// AudioSender detects context canceled and closes stream
-	// 	<-closeSendCalls
-	// 	// recognizer closes client
-	// 	<-clientCloseCalls
-
-	// 	wg.Wait()
-
-	// 	if !errors.Is(got, context.Canceled) {
-	// 		t.Errorf("recognizer.Start() error = %v, want %v", got, context.Canceled)
-	// 	}
-	// })
-
-	t.Run("receive,process,monitor", func(t *testing.T) {
-		// io writers
-		resultWriter := &bytes.Buffer{}
-		interimWriter := &bytes.Buffer{}
+	t.Run("read,send", func(t *testing.T) {
+		// io reader
+		audioReader := testutil.NewChannelReader()
 
 		// channels
 		audioCh := make(chan []byte)
@@ -417,6 +307,120 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
 		processCh := make(chan struct{})
+
+		// clients
+		sendCalls := make(chan struct{})
+		closeSendCalls := make(chan struct{})
+		streamMock := &myspeechpb.Speech_StreamingRecognizeClientMock{
+			SendFunc: func(*speechpb.StreamingRecognizeRequest) error {
+				defer func() { sendCalls <- struct{}{} }()
+				return nil
+			},
+			CloseSendFunc: func() error {
+				defer func() { closeSendCalls <- struct{}{} }()
+				return nil
+			},
+		}
+		clientCloseCalls := make(chan struct{})
+		clientMock := &myspeech.ClientMock{
+			CloseFunc: func() error {
+				defer func() { clientCloseCalls <- struct{}{} }()
+				return nil
+			},
+		}
+
+		// workers
+		audioReceiver := NewAudioReceiver(audioReader, audioCh, 4)
+		audioSender := NewAudioSender(audioCh, sendStreamCh)
+		streamSupplier := &StreamSupplierInterfaceMock{
+			SupplyFunc: func(context.Context) error {
+				return nil
+			},
+			StartFunc: func(context.Context) error {
+				return nil
+			},
+		}
+		responseReceiver := &ResponseReceiverInterfaceMock{
+			StartFunc: func(context.Context) error {
+				return nil
+			},
+		}
+		responseProcessor := &ResponseProcessorInterfaceMock{
+			StartFunc: func(context.Context) error {
+				return nil
+			},
+		}
+		processMonitor := &ProcessMonitorInterfaceMock{
+			StartFunc: func(context.Context) error {
+				return nil
+			},
+		}
+
+		r := &Recognizer{
+			streamSupplier:    streamSupplier,
+			audioReceiver:     audioReceiver,
+			audioSender:       audioSender,
+			reseponseReceiver: responseReceiver,
+			responseProcessor: responseProcessor,
+			processMonitor:    processMonitor,
+			client:            clientMock,
+			audioCh:           audioCh,
+			responseCh:        responseCh,
+			sendStreamCh:      sendStreamCh,
+			receiveStreamCh:   receiveStreamCh,
+			processCh:         processCh,
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		var wg sync.WaitGroup
+		wg.Add(1)
+		var got error
+		go func() {
+			defer wg.Done()
+			got = r.Start(ctx)
+		}()
+
+		// Suplly stream to AudioSender.
+		sendStreamCh <- streamMock
+
+		// Send bytes to reader to be read by AudioReceiver.
+		audioReader.BufCh <- bytes.Repeat([]byte("a"), 4)
+		// AudioReceiver reads bytes and sends to audioCh.
+		// AudioSender reads bytes from audioCh and sends to stream.
+		<-sendCalls
+
+		// Send EOF to reader.
+		audioReader.EOFCh <- struct{}{}
+		// AudioReceiver reads EOF.
+
+		// Close context to stop recognizer.
+		cancel()
+		// AudioSender detects context canceled and closes stream
+		<-closeSendCalls
+		// recognizer closes client
+		<-clientCloseCalls
+
+		wg.Wait()
+
+		if !errors.Is(got, context.Canceled) {
+			t.Errorf("recognizer.Start() error = %v, want %v", got, context.Canceled)
+		}
+	})
+
+	t.Run("receive,process,monitor", func(t *testing.T) {
+		// io writers
+		resultWriter := &bytes.Buffer{}
+		interimWriter := &bytes.Buffer{}
+
+		// channels
+		audioCh := make(chan []byte, 1)
+		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
+		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
+		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
+		// Buffer size of 1 to avoid deadlock.
+		// If the context is canceled and processMonitor stops before reading from processCh,
+		// processCh will block responseProcessor indefinitely.
+		processCh := make(chan struct{}, 1)
 
 		// clients
 		recvResponseCh := make(chan *speechpb.StreamingRecognizeResponse)

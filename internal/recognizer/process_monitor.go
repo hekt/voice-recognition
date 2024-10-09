@@ -8,7 +8,7 @@ import (
 
 //go:generate moq -rm -out process_monitor_mock.go . ProcessMonitorInterface
 type ProcessMonitorInterface interface {
-	Start(context.Context, context.CancelFunc) error
+	Start(context.Context) error
 }
 
 var _ ProcessMonitorInterface = &ProcessMonitor{}
@@ -28,7 +28,7 @@ func NewProcessMonitor(
 	}
 }
 
-func (m *ProcessMonitor) Start(ctx context.Context, cancelFunc context.CancelFunc) error {
+func (m *ProcessMonitor) Start(ctx context.Context) error {
 	timer := time.NewTimer(m.timeoutDuration)
 	defer timer.Stop()
 
@@ -42,7 +42,6 @@ func (m *ProcessMonitor) Start(ctx context.Context, cancelFunc context.CancelFun
 			}
 			timer.Reset(m.timeoutDuration)
 		case <-timer.C:
-			cancelFunc()
 			return errors.New("inactive for a long time")
 		}
 	}

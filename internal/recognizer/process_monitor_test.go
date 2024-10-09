@@ -34,14 +34,8 @@ func TestProcessMonitor_Start(t *testing.T) {
 		defer cancel()
 
 		wantMsg := "inactive for a long time"
-		if got := m.Start(ctx, cancel); got != nil && got.Error() != wantMsg {
+		if got := m.Start(ctx); got != nil && got.Error() != wantMsg {
 			t.Errorf("ProcessMonitor.Start() = %v, want %v", got, wantMsg)
-		}
-
-		select {
-		case <-ctx.Done():
-		default:
-			t.Error("context is not canceled")
 		}
 	})
 
@@ -58,7 +52,7 @@ func TestProcessMonitor_Start(t *testing.T) {
 		var got error
 		go func() {
 			defer wg.Done()
-			got = m.Start(ctx, cancel)
+			got = m.Start(ctx)
 		}()
 
 		cancel()
@@ -84,7 +78,7 @@ func TestProcessMonitor_Start(t *testing.T) {
 		var got error
 		go func() {
 			defer wg.Done()
-			got = m.Start(ctx, cancel)
+			got = m.Start(ctx)
 		}()
 
 		// extend timeout every 50ms
@@ -112,9 +106,6 @@ func TestProcessMonitor_Start(t *testing.T) {
 
 		// Stop extending timeout
 		processCancel()
-
-		// Wait for the timeout to occur
-		<-ctx.Done()
 
 		wg.Wait()
 

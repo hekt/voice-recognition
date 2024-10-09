@@ -18,7 +18,7 @@ var _ ProcessMonitorInterface = &ProcessMonitorInterfaceMock{}
 //
 //		// make and configure a mocked ProcessMonitorInterface
 //		mockedProcessMonitorInterface := &ProcessMonitorInterfaceMock{
-//			StartFunc: func(contextMoqParam context.Context, cancelFunc context.CancelFunc) error {
+//			StartFunc: func(contextMoqParam context.Context) error {
 //				panic("mock out the Start method")
 //			},
 //		}
@@ -29,7 +29,7 @@ var _ ProcessMonitorInterface = &ProcessMonitorInterfaceMock{}
 //	}
 type ProcessMonitorInterfaceMock struct {
 	// StartFunc mocks the Start method.
-	StartFunc func(contextMoqParam context.Context, cancelFunc context.CancelFunc) error
+	StartFunc func(contextMoqParam context.Context) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -37,29 +37,25 @@ type ProcessMonitorInterfaceMock struct {
 		Start []struct {
 			// ContextMoqParam is the contextMoqParam argument value.
 			ContextMoqParam context.Context
-			// CancelFunc is the cancelFunc argument value.
-			CancelFunc context.CancelFunc
 		}
 	}
 	lockStart sync.RWMutex
 }
 
 // Start calls StartFunc.
-func (mock *ProcessMonitorInterfaceMock) Start(contextMoqParam context.Context, cancelFunc context.CancelFunc) error {
+func (mock *ProcessMonitorInterfaceMock) Start(contextMoqParam context.Context) error {
 	if mock.StartFunc == nil {
 		panic("ProcessMonitorInterfaceMock.StartFunc: method is nil but ProcessMonitorInterface.Start was just called")
 	}
 	callInfo := struct {
 		ContextMoqParam context.Context
-		CancelFunc      context.CancelFunc
 	}{
 		ContextMoqParam: contextMoqParam,
-		CancelFunc:      cancelFunc,
 	}
 	mock.lockStart.Lock()
 	mock.calls.Start = append(mock.calls.Start, callInfo)
 	mock.lockStart.Unlock()
-	return mock.StartFunc(contextMoqParam, cancelFunc)
+	return mock.StartFunc(contextMoqParam)
 }
 
 // StartCalls gets all the calls that were made to Start.
@@ -68,11 +64,9 @@ func (mock *ProcessMonitorInterfaceMock) Start(contextMoqParam context.Context, 
 //	len(mockedProcessMonitorInterface.StartCalls())
 func (mock *ProcessMonitorInterfaceMock) StartCalls() []struct {
 	ContextMoqParam context.Context
-	CancelFunc      context.CancelFunc
 } {
 	var calls []struct {
 		ContextMoqParam context.Context
-		CancelFunc      context.CancelFunc
 	}
 	mock.lockStart.RLock()
 	calls = mock.calls.Start
