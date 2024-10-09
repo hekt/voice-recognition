@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-	"time"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
 )
@@ -16,13 +15,15 @@ func TestNewResponseProcessor(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		resultBuf := &bytes.Buffer{}
 		interimBuf := &bytes.Buffer{}
-		responseCh := make(chan *speechpb.StreamingRecognizeResponse, 1)
+		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
+		processCh := make(chan struct{})
 
-		got := NewResponseProcessor(resultBuf, interimBuf, responseCh)
+		got := NewResponseProcessor(resultBuf, interimBuf, responseCh, processCh)
 		want := &ResponseProcessor{
 			resultWriter:  resultBuf,
 			interimWriter: interimBuf,
 			responseCh:    responseCh,
+			processCh:     processCh,
 		}
 
 		if !reflect.DeepEqual(got, want) {
@@ -31,7 +32,7 @@ func TestNewResponseProcessor(t *testing.T) {
 	})
 }
 
-func Test_responseProcessor_Start(t *testing.T) {
+func Test_ResponseProcessor_Start(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -39,11 +40,13 @@ func Test_responseProcessor_Start(t *testing.T) {
 		resultBuf := &bytes.Buffer{}
 		interimBuf := &bytes.Buffer{}
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
+		processCh := make(chan struct{})
 
 		p := &ResponseProcessor{
 			resultWriter:  resultBuf,
 			interimWriter: interimBuf,
 			responseCh:    responseCh,
+			processCh:     processCh,
 		}
 
 		var wg sync.WaitGroup
@@ -71,6 +74,7 @@ func Test_responseProcessor_Start(t *testing.T) {
 				},
 			},
 		}
+		<-processCh
 		// (2) 中間応答レスポンス
 		responseCh <- &speechpb.StreamingRecognizeResponse{
 			Results: []*speechpb.StreamingRecognitionResult{
@@ -94,6 +98,7 @@ func Test_responseProcessor_Start(t *testing.T) {
 				},
 			},
 		}
+		<-processCh
 		// no alternatives must be skipped
 		responseCh <- &speechpb.StreamingRecognizeResponse{
 			Results: []*speechpb.StreamingRecognitionResult{
@@ -120,6 +125,7 @@ func Test_responseProcessor_Start(t *testing.T) {
 				},
 			},
 		}
+		<-processCh
 		// (4) 中間応答レスポンス
 		responseCh <- &speechpb.StreamingRecognizeResponse{
 			Results: []*speechpb.StreamingRecognitionResult{
@@ -135,9 +141,7 @@ func Test_responseProcessor_Start(t *testing.T) {
 				},
 			},
 		}
-
-		// 処理が行われるまで待つ
-		time.Sleep(100 * time.Millisecond)
+		<-processCh
 
 		// 中断して完了まで待つ
 		cancel()

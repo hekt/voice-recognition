@@ -40,6 +40,11 @@ func NewRecognizeCommand() *cli.Command {
 				Usage: "Buffer size bytes",
 				Value: 1024,
 			},
+			&cli.DurationFlag{
+				Name:  "timeout",
+				Usage: "Inactive timeout duration",
+				Value: 5 * time.Minute,
+			},
 		},
 		Action: func(cCtx *cli.Context) error {
 			if cCtx.Bool(debugFlag.Name) {
@@ -71,6 +76,7 @@ func NewRecognizeCommand() *cli.Command {
 				cCtx.String(recognizerFlag.Name),
 				cCtx.Duration("interval"),
 				cCtx.Int("buffersize"),
+				cCtx.Duration("timeout"),
 				client,
 				audioReader,
 				resultWriter,

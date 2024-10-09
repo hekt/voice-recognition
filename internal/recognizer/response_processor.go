@@ -21,17 +21,20 @@ type ResponseProcessor struct {
 	resultWriter  io.Writer
 	interimWriter io.Writer
 	responseCh    <-chan *speechpb.StreamingRecognizeResponse
+	processCh     chan<- struct{}
 }
 
 func NewResponseProcessor(
 	resultWriter io.Writer,
 	interimWriter io.Writer,
 	responseCh <-chan *speechpb.StreamingRecognizeResponse,
+	processCh chan<- struct{},
 ) *ResponseProcessor {
 	return &ResponseProcessor{
 		resultWriter:  resultWriter,
 		interimWriter: interimWriter,
 		responseCh:    responseCh,
+		processCh:     processCh,
 	}
 }
 
@@ -90,6 +93,8 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 			if _, err := p.interimWriter.Write(interimResult); err != nil {
 				return fmt.Errorf("failed to write interim result: %w", err)
 			}
+
+			p.processCh <- struct{}{}
 		}
 	}
 }

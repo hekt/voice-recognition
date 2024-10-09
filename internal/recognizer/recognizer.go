@@ -23,6 +23,7 @@ type Recognizer struct {
 	audioSender       AudioSenderInterface
 	reseponseReceiver ResponseReceiverInterface
 	responseProcessor ResponseProcessorInterface
+	processMonitor    ProcessMonitorInterface
 
 	// client は Speech-to-Text API のクライアント。
 	client speech.Client
@@ -34,6 +35,8 @@ type Recognizer struct {
 	sendStreamCh chan speechpb.Speech_StreamingRecognizeClient
 	// receiveStreamCh は受信用の stream を受け渡しする channel。
 	receiveStreamCh chan speechpb.Speech_StreamingRecognizeClient
+	// processCh はレスポンスデータの処理を通知する channel。
+	processCh chan struct{}
 }
 
 func New(
@@ -41,6 +44,7 @@ func New(
 	recognizerName string,
 	reconnectInterval time.Duration,
 	bufferSize int,
+	inactiveTimeout time.Duration,
 	client speech.Client,
 	audioReader io.Reader,
 	resultWriter io.Writer,
@@ -57,6 +61,9 @@ func New(
 	}
 	if reconnectInterval < time.Minute {
 		return nil, errors.New("reconnect interval must be greater than or equal to 1 minute")
+	}
+	if inactiveTimeout == 0 {
+		return nil, errors.New("inactive timeout must be specified")
 	}
 	if client == nil {
 		return nil, errors.New("client must be specified")
@@ -78,6 +85,7 @@ func New(
 	// so buffer size is set to 1.
 	sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 	receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
+	processCh := make(chan struct{}, 1)
 
 	streamSupplier := NewStreamSupplier(
 		client,
@@ -93,7 +101,9 @@ func New(
 		&DecoratedResultWriter{Writer: resultWriter},
 		&DecoratedInterimWriter{Writer: interimWriter},
 		responseCh,
+		processCh,
 	)
+	processMonitor := NewProcessMonitor(processCh, inactiveTimeout)
 
 	return &Recognizer{
 		streamSupplier:    streamSupplier,
@@ -101,12 +111,14 @@ func New(
 		audioSender:       audioSender,
 		reseponseReceiver: responseReceiver,
 		responseProcessor: responseProcessor,
+		processMonitor:    processMonitor,
 
 		client:          client,
 		audioCh:         audioCh,
 		responseCh:      responseCh,
 		sendStreamCh:    sendStreamCh,
 		receiveStreamCh: receiveStreamCh,
+		processCh:       processCh,
 	}, nil
 }
 
@@ -118,6 +130,7 @@ func (r *Recognizer) Start(ctx context.Context) error {
 		close(r.sendStreamCh)
 		close(r.receiveStreamCh)
 		close(r.responseCh)
+		close(r.processCh)
 		if err := r.client.Close(); err != nil {
 			slog.Error(fmt.Sprintf("failed to close client: %v", err))
 		}
@@ -132,6 +145,12 @@ func (r *Recognizer) Start(ctx context.Context) error {
 
 	eg, ctx := errgroup.WithContext(ctx)
 
+	eg.Go(func() error {
+		if err := r.processMonitor.Start(ctx, stop); err != nil {
+			return fmt.Errorf("error occured in process monitor: %w", err)
+		}
+		return nil
+	})
 	eg.Go(func() error {
 		if err := r.audioReceiver.Start(ctx); err != nil {
 			return fmt.Errorf("error occured in audio receiver: %w", err)
