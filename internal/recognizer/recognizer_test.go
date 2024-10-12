@@ -426,7 +426,7 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 		}
 	})
 
-	t.Run("receive,process,write", func(t *testing.T) {
+	t.Run("receive,process,write,process", func(t *testing.T) {
 		// io writers
 		ioResultWriter := &bytes.Buffer{}
 		ioInterimWriter := &bytes.Buffer{}
@@ -478,8 +478,18 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 			},
 		}
 		responseReceiver := NewResponseReceiver(responseCh, receiveStreamCh)
-		responseProcessor := NewResponseProcessor(responseCh, resultCh, processCh)
-		resultWriter := NewResultWriter(resultCh, ioResultWriter, ioInterimWriter)
+		responseProcessor := NewResponseProcessor(responseCh, resultCh)
+		resultWriter := NewResultWriter(
+			resultCh,
+			&NotifyingWriter{
+				Writer:   ioResultWriter,
+				NotifyCh: processCh,
+			},
+			&NotifyingWriter{
+				Writer:   ioInterimWriter,
+				NotifyCh: processCh,
+			},
+		)
 		processMonitor := NewProcessMonitor(processCh, time.Minute)
 
 		r := &Recognizer{

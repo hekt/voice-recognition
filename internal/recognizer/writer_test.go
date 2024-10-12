@@ -70,3 +70,27 @@ func TestDecoratedResultWriter_Write(t *testing.T) {
 		}
 	})
 }
+
+func TestNotifyingWriter_Write(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		writer := &bytes.Buffer{}
+		notifyCh := make(chan struct{}, 2)
+		w := &NotifyingWriter{
+			Writer:   writer,
+			NotifyCh: notifyCh,
+		}
+
+		if _, err := w.Write([]byte("test1")); err != nil {
+			t.Errorf("Write() error = %v, wantErr %v", err, false)
+		}
+		if _, err := w.Write([]byte("test2")); err != nil {
+			t.Errorf("Write() error = %v, wantErr %v", err, false)
+		}
+		if got, want := writer.String(), "test1test2"; got != want {
+			t.Errorf("Write() writes %v, want %v", got, want)
+		}
+		if got, want := len(notifyCh), 2; got != want {
+			t.Errorf("NotifyCh length %v, want %v", got, want)
+		}
+	})
+}

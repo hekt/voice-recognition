@@ -18,18 +18,15 @@ var _ ResponseProcessorInterface = (*ResponseProcessor)(nil)
 type ResponseProcessor struct {
 	responseCh <-chan *speechpb.StreamingRecognizeResponse
 	resultCh   chan<- []*model.Result
-	processCh  chan<- struct{}
 }
 
 func NewResponseProcessor(
 	responseCh <-chan *speechpb.StreamingRecognizeResponse,
 	resultCh chan<- []*model.Result,
-	processCh chan<- struct{},
 ) *ResponseProcessor {
 	return &ResponseProcessor{
 		responseCh: responseCh,
 		resultCh:   resultCh,
-		processCh:  processCh,
 	}
 }
 
@@ -61,7 +58,6 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 			}
 
 			p.resultCh <- results
-			p.processCh <- struct{}{}
 		}
 	}
 }

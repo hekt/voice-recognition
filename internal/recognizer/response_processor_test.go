@@ -16,13 +16,11 @@ func TestNewResponseProcessor(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
 		resultCh := make(chan []*model.Result)
-		processCh := make(chan struct{})
 
-		got := NewResponseProcessor(responseCh, resultCh, processCh)
+		got := NewResponseProcessor(responseCh, resultCh)
 		want := &ResponseProcessor{
 			responseCh: responseCh,
 			resultCh:   resultCh,
-			processCh:  processCh,
 		}
 
 		if !reflect.DeepEqual(got, want) {
@@ -38,12 +36,10 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
 		resultCh := make(chan []*model.Result, 2)
-		processCh := make(chan struct{})
 
 		p := &ResponseProcessor{
 			responseCh: responseCh,
 			resultCh:   resultCh,
-			processCh:  processCh,
 		}
 
 		var wg sync.WaitGroup
@@ -71,7 +67,6 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 				},
 			},
 		}
-		<-processCh
 
 		// no alternatives must be skipped
 		responseCh <- &speechpb.StreamingRecognizeResponse{
@@ -100,7 +95,6 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 				},
 			},
 		}
-		<-processCh
 
 		// 中断して完了まで待つ
 		cancel()

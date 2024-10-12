@@ -103,12 +103,17 @@ func New(
 	responseProcessor := NewResponseProcessor(
 		responseCh,
 		resultCh,
-		processCh,
 	)
 	resultWriter := NewResultWriter(
 		resultCh,
-		&DecoratedResultWriter{Writer: ioResultWriter},
-		&DecoratedInterimWriter{Writer: ioInterimWriter},
+		&NotifyingWriter{
+			Writer:   &DecoratedResultWriter{Writer: ioResultWriter},
+			NotifyCh: processCh,
+		},
+		&NotifyingWriter{
+			Writer:   &DecoratedInterimWriter{Writer: ioInterimWriter},
+			NotifyCh: processCh,
+		},
 	)
 	processMonitor := NewProcessMonitor(processCh, inactiveTimeout)
 

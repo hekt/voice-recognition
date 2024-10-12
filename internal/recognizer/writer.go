@@ -43,3 +43,17 @@ func (w *DecoratedResultWriter) Write(p []byte) (n int, err error) {
 
 	return w.Writer.Write(w.buf.Bytes())
 }
+
+var _ io.Writer = (*NotifyingWriter)(nil)
+
+type NotifyingWriter struct {
+	Writer   io.Writer
+	NotifyCh chan<- struct{}
+}
+
+func (w *NotifyingWriter) Write(p []byte) (n int, err error) {
+	defer func() {
+		w.NotifyCh <- struct{}{}
+	}()
+	return w.Writer.Write(p)
+}
