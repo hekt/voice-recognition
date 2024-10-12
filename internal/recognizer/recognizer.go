@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	"github.com/hekt/voice-recognition/internal/recognizer/google"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 )
@@ -29,6 +30,7 @@ type Recognizer struct {
 
 func New(
 	ctx context.Context,
+	client myspeech.Client,
 	projectID string,
 	recognizerName string,
 	reconnectInterval time.Duration,
@@ -61,6 +63,7 @@ func New(
 
 	recognizer, err := google.NewRecognizer(
 		ctx,
+		client,
 		audioCh,
 		resultCh,
 		projectID,

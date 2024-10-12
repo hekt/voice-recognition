@@ -17,6 +17,7 @@ import (
 func TestNewRecognizer(t *testing.T) {
 	type args struct {
 		ctx               context.Context
+		client            myspeech.Client
 		audioCh           <-chan []byte
 		resultCh          chan<- []*model.Result
 		projectID         string
@@ -25,6 +26,7 @@ func TestNewRecognizer(t *testing.T) {
 	}
 	baseArgs := args{
 		ctx:               context.Background(),
+		client:            &myspeech.ClientMock{},
 		audioCh:           make(chan []byte),
 		resultCh:          make(chan []*model.Result),
 		projectID:         "test-project-id",
@@ -69,6 +71,15 @@ func TestNewRecognizer(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "nil client",
+			args: func() args {
+				a := baseArgs
+				a.client = nil
+				return a
+			}(),
+			wantErr: true,
+		},
+		{
 			name: "nil audio channel",
 			args: func() args {
 				a := baseArgs
@@ -91,6 +102,7 @@ func TestNewRecognizer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewRecognizer(
 				tt.args.ctx,
+				tt.args.client,
 				tt.args.audioCh,
 				tt.args.resultCh,
 				tt.args.projectID,

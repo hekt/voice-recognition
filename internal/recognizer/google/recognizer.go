@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	speech "cloud.google.com/go/speech/apiv2"
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
@@ -35,6 +34,7 @@ type Recognizer struct {
 
 func NewRecognizer(
 	ctx context.Context,
+	client myspeech.Client,
 	audioCh <-chan []byte,
 	resultCh chan<- []*model.Result,
 	projectID string,
@@ -50,16 +50,14 @@ func NewRecognizer(
 	if reconnectInterval < time.Minute {
 		return nil, errors.New("reconnect interval must be greater than or equal to 1 minute")
 	}
+	if client == nil {
+		return nil, errors.New("client must be specified")
+	}
 	if audioCh == nil {
 		return nil, errors.New("audio channel must be specified")
 	}
 	if resultCh == nil {
 		return nil, errors.New("result channel must be specified")
-	}
-
-	client, err := speech.NewClient(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create speech client: %w", err)
 	}
 
 	sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)

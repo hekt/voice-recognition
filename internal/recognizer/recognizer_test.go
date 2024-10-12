@@ -9,12 +9,14 @@ import (
 	"testing"
 	"time"
 
+	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 	"github.com/hekt/voice-recognition/internal/testutil"
 )
 
 func Test_New(t *testing.T) {
 	type args struct {
+		client            myspeech.Client
 		projectID         string
 		recognizerName    string
 		reconnectInterval time.Duration
@@ -25,6 +27,7 @@ func Test_New(t *testing.T) {
 		interimWriter     io.Writer
 	}
 	validArgs := args{
+		client:            &myspeech.ClientMock{},
 		projectID:         "test-project-id",
 		recognizerName:    "test-recognizer-name",
 		reconnectInterval: time.Minute,
@@ -95,6 +98,7 @@ func Test_New(t *testing.T) {
 			ctx := context.Background()
 			got, err := New(
 				ctx,
+				tt.args.client,
 				tt.args.projectID,
 				tt.args.recognizerName,
 				tt.args.reconnectInterval,
