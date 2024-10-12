@@ -209,9 +209,7 @@ func Test_Recognizer_Start(t *testing.T) {
 			}
 		})
 	}
-}
 
-func Test_Recognizer_Start_Dataflow(t *testing.T) {
 	t.Run("read,recognize,write", func(t *testing.T) {
 		chunkSize := 4
 
