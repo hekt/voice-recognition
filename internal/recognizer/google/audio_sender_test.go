@@ -1,4 +1,4 @@
-package recognizer
+package google
 
 import (
 	"bytes"

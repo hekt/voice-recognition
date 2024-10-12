@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	myspeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
+	"github.com/hekt/voice-recognition/internal/recognizer/google"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 	"github.com/hekt/voice-recognition/internal/testutil"
 )
@@ -157,11 +158,11 @@ func Test_New(t *testing.T) {
 
 func Test_Recognizer_Start(t *testing.T) {
 	type fields struct {
-		streamSupplier    StreamSupplierInterface
-		audioReceiver     AudioReaderInterface
-		audioSender       AudioSenderInterface
-		reseponseReceiver ResponseReceiverInterface
-		responseProcessor ResponseProcessorInterface
+		streamSupplier    google.StreamSupplierInterface
+		audioReader       AudioReaderInterface
+		audioSender       google.AudioSenderInterface
+		reseponseReceiver google.ResponseReceiverInterface
+		responseProcessor google.ResponseProcessorInterface
 		resultWriter      ResultWriterInterface
 		processMonitor    ProcessMonitorInterface
 		client            myspeech.Client
@@ -179,7 +180,7 @@ func Test_Recognizer_Start(t *testing.T) {
 		{
 			name: "success",
 			fields: fields{
-				streamSupplier: &StreamSupplierInterfaceMock{
+				streamSupplier: &google.StreamSupplierInterfaceMock{
 					SupplyFunc: func(context.Context) error {
 						return nil
 					},
@@ -187,22 +188,22 @@ func Test_Recognizer_Start(t *testing.T) {
 						return nil
 					},
 				},
-				audioReceiver: &AudioReaderInterfaceMock{
+				audioReader: &AudioReaderInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
 				},
-				audioSender: &AudioSenderInterfaceMock{
+				audioSender: &google.AudioSenderInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
 				},
-				reseponseReceiver: &ResponseReceiverInterfaceMock{
+				reseponseReceiver: &google.ResponseReceiverInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
 				},
-				responseProcessor: &ResponseProcessorInterfaceMock{
+				responseProcessor: &google.ResponseProcessorInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
@@ -233,7 +234,7 @@ func Test_Recognizer_Start(t *testing.T) {
 		{
 			name: "failed to start stream supplier",
 			fields: fields{
-				streamSupplier: &StreamSupplierInterfaceMock{
+				streamSupplier: &google.StreamSupplierInterfaceMock{
 					SupplyFunc: func(context.Context) error {
 						return nil
 					},
@@ -241,22 +242,22 @@ func Test_Recognizer_Start(t *testing.T) {
 						return errors.New("test error")
 					},
 				},
-				audioReceiver: &AudioReaderInterfaceMock{
+				audioReader: &AudioReaderInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
 				},
-				audioSender: &AudioSenderInterfaceMock{
+				audioSender: &google.AudioSenderInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
 				},
-				reseponseReceiver: &ResponseReceiverInterfaceMock{
+				reseponseReceiver: &google.ResponseReceiverInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
 				},
-				responseProcessor: &ResponseProcessorInterfaceMock{
+				responseProcessor: &google.ResponseProcessorInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
@@ -289,7 +290,7 @@ func Test_Recognizer_Start(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Recognizer{
 				streamSupplier:    tt.fields.streamSupplier,
-				audioReceiver:     tt.fields.audioReceiver,
+				audioReceiver:     tt.fields.audioReader,
 				audioSender:       tt.fields.audioSender,
 				reseponseReceiver: tt.fields.reseponseReceiver,
 				responseProcessor: tt.fields.responseProcessor,
@@ -344,8 +345,8 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 
 		// workers
 		audioReceiver := NewAudioReceiver(audioReader, audioCh, 4)
-		audioSender := NewAudioSender(audioCh, sendStreamCh)
-		streamSupplier := &StreamSupplierInterfaceMock{
+		audioSender := google.NewAudioSender(audioCh, sendStreamCh)
+		streamSupplier := &google.StreamSupplierInterfaceMock{
 			SupplyFunc: func(context.Context) error {
 				return nil
 			},
@@ -353,12 +354,12 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 				return nil
 			},
 		}
-		responseReceiver := &ResponseReceiverInterfaceMock{
+		responseReceiver := &google.ResponseReceiverInterfaceMock{
 			StartFunc: func(context.Context) error {
 				return nil
 			},
 		}
-		responseProcessor := &ResponseProcessorInterfaceMock{
+		responseProcessor := &google.ResponseProcessorInterfaceMock{
 			StartFunc: func(context.Context) error {
 				return nil
 			},
@@ -464,12 +465,12 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 				return nil
 			},
 		}
-		audioSender := &AudioSenderInterfaceMock{
+		audioSender := &google.AudioSenderInterfaceMock{
 			StartFunc: func(context.Context) error {
 				return nil
 			},
 		}
-		streamSupplier := &StreamSupplierInterfaceMock{
+		streamSupplier := &google.StreamSupplierInterfaceMock{
 			SupplyFunc: func(context.Context) error {
 				return nil
 			},
@@ -477,8 +478,8 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 				return nil
 			},
 		}
-		responseReceiver := NewResponseReceiver(responseCh, receiveStreamCh)
-		responseProcessor := NewResponseProcessor(responseCh, resultCh)
+		responseReceiver := google.NewResponseReceiver(responseCh, receiveStreamCh)
+		responseProcessor := google.NewResponseProcessor(responseCh, resultCh)
 		resultWriter := NewResultWriter(
 			resultCh,
 			&NotifyingWriter{

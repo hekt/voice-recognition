@@ -14,16 +14,17 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/hekt/voice-recognition/internal/interfaces/speech"
+	"github.com/hekt/voice-recognition/internal/recognizer/google"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 	"github.com/hekt/voice-recognition/internal/resource"
 )
 
 type Recognizer struct {
-	streamSupplier    StreamSupplierInterface
+	streamSupplier    google.StreamSupplierInterface
 	audioReceiver     AudioReaderInterface
-	audioSender       AudioSenderInterface
-	reseponseReceiver ResponseReceiverInterface
-	responseProcessor ResponseProcessorInterface
+	audioSender       google.AudioSenderInterface
+	reseponseReceiver google.ResponseReceiverInterface
+	responseProcessor google.ResponseProcessorInterface
 	resultWriter      ResultWriterInterface
 	processMonitor    ProcessMonitorInterface
 
@@ -90,7 +91,7 @@ func New(
 	receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
 	processCh := make(chan struct{}, 1)
 
-	streamSupplier := NewStreamSupplier(
+	streamSupplier := google.NewStreamSupplier(
 		client,
 		sendStreamCh,
 		receiveStreamCh,
@@ -98,9 +99,9 @@ func New(
 		reconnectInterval,
 	)
 	audioReceiver := NewAudioReceiver(audioReader, audioCh, bufferSize)
-	audioSender := NewAudioSender(audioCh, sendStreamCh)
-	responseReceiver := NewResponseReceiver(responseCh, receiveStreamCh)
-	responseProcessor := NewResponseProcessor(
+	audioSender := google.NewAudioSender(audioCh, sendStreamCh)
+	responseReceiver := google.NewResponseReceiver(responseCh, receiveStreamCh)
+	responseProcessor := google.NewResponseProcessor(
 		responseCh,
 		resultCh,
 	)
