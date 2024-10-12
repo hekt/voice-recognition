@@ -8,26 +8,26 @@ import (
 	"sync"
 )
 
-// Ensure, that AudioReceiverInterfaceMock does implement AudioReceiverInterface.
+// Ensure, that AudioReaderInterfaceMock does implement AudioReaderInterface.
 // If this is not the case, regenerate this file with moq.
-var _ AudioReceiverInterface = &AudioReceiverInterfaceMock{}
+var _ AudioReaderInterface = &AudioReaderInterfaceMock{}
 
-// AudioReceiverInterfaceMock is a mock implementation of AudioReceiverInterface.
+// AudioReaderInterfaceMock is a mock implementation of AudioReaderInterface.
 //
-//	func TestSomethingThatUsesAudioReceiverInterface(t *testing.T) {
+//	func TestSomethingThatUsesAudioReaderInterface(t *testing.T) {
 //
-//		// make and configure a mocked AudioReceiverInterface
-//		mockedAudioReceiverInterface := &AudioReceiverInterfaceMock{
+//		// make and configure a mocked AudioReaderInterface
+//		mockedAudioReaderInterface := &AudioReaderInterfaceMock{
 //			StartFunc: func(ctx context.Context) error {
 //				panic("mock out the Start method")
 //			},
 //		}
 //
-//		// use mockedAudioReceiverInterface in code that requires AudioReceiverInterface
+//		// use mockedAudioReaderInterface in code that requires AudioReaderInterface
 //		// and then make assertions.
 //
 //	}
-type AudioReceiverInterfaceMock struct {
+type AudioReaderInterfaceMock struct {
 	// StartFunc mocks the Start method.
 	StartFunc func(ctx context.Context) error
 
@@ -43,9 +43,9 @@ type AudioReceiverInterfaceMock struct {
 }
 
 // Start calls StartFunc.
-func (mock *AudioReceiverInterfaceMock) Start(ctx context.Context) error {
+func (mock *AudioReaderInterfaceMock) Start(ctx context.Context) error {
 	if mock.StartFunc == nil {
-		panic("AudioReceiverInterfaceMock.StartFunc: method is nil but AudioReceiverInterface.Start was just called")
+		panic("AudioReaderInterfaceMock.StartFunc: method is nil but AudioReaderInterface.Start was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -61,8 +61,8 @@ func (mock *AudioReceiverInterfaceMock) Start(ctx context.Context) error {
 // StartCalls gets all the calls that were made to Start.
 // Check the length with:
 //
-//	len(mockedAudioReceiverInterface.StartCalls())
-func (mock *AudioReceiverInterfaceMock) StartCalls() []struct {
+//	len(mockedAudioReaderInterface.StartCalls())
+func (mock *AudioReaderInterfaceMock) StartCalls() []struct {
 	Ctx context.Context
 } {
 	var calls []struct {

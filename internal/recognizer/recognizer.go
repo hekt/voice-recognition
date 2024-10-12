@@ -20,7 +20,7 @@ import (
 
 type Recognizer struct {
 	streamSupplier    StreamSupplierInterface
-	audioReceiver     AudioReceiverInterface
+	audioReceiver     AudioReaderInterface
 	audioSender       AudioSenderInterface
 	reseponseReceiver ResponseReceiverInterface
 	responseProcessor ResponseProcessorInterface

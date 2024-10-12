@@ -158,7 +158,7 @@ func Test_New(t *testing.T) {
 func Test_Recognizer_Start(t *testing.T) {
 	type fields struct {
 		streamSupplier    StreamSupplierInterface
-		audioReceiver     AudioReceiverInterface
+		audioReceiver     AudioReaderInterface
 		audioSender       AudioSenderInterface
 		reseponseReceiver ResponseReceiverInterface
 		responseProcessor ResponseProcessorInterface
@@ -187,7 +187,7 @@ func Test_Recognizer_Start(t *testing.T) {
 						return nil
 					},
 				},
-				audioReceiver: &AudioReceiverInterfaceMock{
+				audioReceiver: &AudioReaderInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
@@ -241,7 +241,7 @@ func Test_Recognizer_Start(t *testing.T) {
 						return errors.New("test error")
 					},
 				},
-				audioReceiver: &AudioReceiverInterfaceMock{
+				audioReceiver: &AudioReaderInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
@@ -459,7 +459,7 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 		}
 
 		// workers
-		audioReceiver := &AudioReceiverInterfaceMock{
+		audioReceiver := &AudioReaderInterfaceMock{
 			StartFunc: func(context.Context) error {
 				return nil
 			},

@@ -16,10 +16,10 @@ func TestNewAudioReceiver(t *testing.T) {
 		audioReader := &bytes.Buffer{}
 		s := NewAudioReceiver(audioReader, audioCh, 1024)
 
-		want := &AudioReceiver{
-			audioReader: audioReader,
-			audioCh:     audioCh,
-			bufferSize:  1024,
+		want := &AudioReader{
+			reader:     audioReader,
+			audioCh:    audioCh,
+			bufferSize: 1024,
 		}
 		if !reflect.DeepEqual(s, want) {
 			t.Errorf("NewAudioReceiver() = %v, want %v", s, want)
@@ -35,10 +35,10 @@ func Test_AudioReceiver_Start(t *testing.T) {
 		eofCh := audioReader.EOFCh
 		audioCh := make(chan []byte, 3)
 
-		r := &AudioReceiver{
-			audioReader: audioReader,
-			audioCh:     audioCh,
-			bufferSize:  chunkSize,
+		r := &AudioReader{
+			reader:     audioReader,
+			audioCh:    audioCh,
+			bufferSize: chunkSize,
 		}
 
 		var wg sync.WaitGroup
