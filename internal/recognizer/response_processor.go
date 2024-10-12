@@ -1,13 +1,11 @@
 package recognizer
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
-	"log/slog"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
+	"github.com/hekt/voice-recognition/internal/recognizer/model"
 )
 
 //go:generate moq -rm -out response_processor_mock.go . ResponseProcessorInterface
@@ -18,41 +16,24 @@ type ResponseProcessorInterface interface {
 var _ ResponseProcessorInterface = (*ResponseProcessor)(nil)
 
 type ResponseProcessor struct {
-	resultWriter  io.Writer
-	interimWriter io.Writer
-	responseCh    <-chan *speechpb.StreamingRecognizeResponse
-	processCh     chan<- struct{}
+	responseCh <-chan *speechpb.StreamingRecognizeResponse
+	resultCh   chan<- []*model.Result
+	processCh  chan<- struct{}
 }
 
 func NewResponseProcessor(
-	resultWriter io.Writer,
-	interimWriter io.Writer,
 	responseCh <-chan *speechpb.StreamingRecognizeResponse,
+	resultCh chan<- []*model.Result,
 	processCh chan<- struct{},
 ) *ResponseProcessor {
 	return &ResponseProcessor{
-		resultWriter:  resultWriter,
-		interimWriter: interimWriter,
-		responseCh:    responseCh,
-		processCh:     processCh,
+		responseCh: responseCh,
+		resultCh:   resultCh,
+		processCh:  processCh,
 	}
 }
 
 func (p *ResponseProcessor) Start(ctx context.Context) error {
-	slog.Debug("ResponseProcessor: start")
-
-	var buf bytes.Buffer
-	var interimResult []byte
-	defer func() {
-		if len(interimResult) == 0 {
-			return
-		}
-		if _, err := p.resultWriter.Write(interimResult); err != nil {
-			slog.Error(fmt.Sprintf("failed to write interim result: %v", err))
-		}
-		slog.Debug("ResponseProcessor: interim result written")
-	}()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,37 +44,23 @@ func (p *ResponseProcessor) Start(ctx context.Context) error {
 			}
 
 			// process response
-			buf.Reset()
+			results := make([]*model.Result, 0, len(resp.Results))
 			for _, result := range resp.Results {
 				if len(result.Alternatives) == 0 {
 					continue
 				}
 
-				s := result.Alternatives[0].Transcript
-
-				if !result.IsFinal {
-					buf.WriteString(s)
-					continue
-				}
-
-				slog.Debug("ResponseProcessor: final result received")
-
-				if _, err := p.resultWriter.Write([]byte(s)); err != nil {
-					return fmt.Errorf("failed to write result: %w", err)
-				}
-				interimResult = nil
-				buf.Reset()
+				results = append(results, &model.Result{
+					Transcript: result.Alternatives[0].Transcript,
+					IsFinal:    result.IsFinal,
+				})
 			}
 
-			if buf.Len() == 0 {
+			if len(results) == 0 {
 				continue
 			}
 
-			interimResult = buf.Bytes()
-			if _, err := p.interimWriter.Write(interimResult); err != nil {
-				return fmt.Errorf("failed to write interim result: %w", err)
-			}
-
+			p.resultCh <- results
 			p.processCh <- struct{}{}
 		}
 	}

@@ -1,7 +1,6 @@
 package recognizer
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"reflect"
@@ -9,21 +8,21 @@ import (
 	"testing"
 
 	"cloud.google.com/go/speech/apiv2/speechpb"
+	"github.com/google/go-cmp/cmp"
+	"github.com/hekt/voice-recognition/internal/recognizer/model"
 )
 
 func TestNewResponseProcessor(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		resultBuf := &bytes.Buffer{}
-		interimBuf := &bytes.Buffer{}
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
+		resultCh := make(chan []*model.Result)
 		processCh := make(chan struct{})
 
-		got := NewResponseProcessor(resultBuf, interimBuf, responseCh, processCh)
+		got := NewResponseProcessor(responseCh, resultCh, processCh)
 		want := &ResponseProcessor{
-			resultWriter:  resultBuf,
-			interimWriter: interimBuf,
-			responseCh:    responseCh,
-			processCh:     processCh,
+			responseCh: responseCh,
+			resultCh:   resultCh,
+			processCh:  processCh,
 		}
 
 		if !reflect.DeepEqual(got, want) {
@@ -37,16 +36,14 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		resultBuf := &bytes.Buffer{}
-		interimBuf := &bytes.Buffer{}
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
+		resultCh := make(chan []*model.Result, 2)
 		processCh := make(chan struct{})
 
 		p := &ResponseProcessor{
-			resultWriter:  resultBuf,
-			interimWriter: interimBuf,
-			responseCh:    responseCh,
-			processCh:     processCh,
+			responseCh: responseCh,
+			resultCh:   resultCh,
+			processCh:  processCh,
 		}
 
 		var wg sync.WaitGroup
@@ -57,7 +54,7 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 			got = p.Start(ctx)
 		}()
 
-		// (1) 中間応答レスポンス
+		// IsFinal: false
 		responseCh <- &speechpb.StreamingRecognizeResponse{
 			Results: []*speechpb.StreamingRecognitionResult{
 				{
@@ -75,30 +72,7 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 			},
 		}
 		<-processCh
-		// (2) 中間応答レスポンス
-		responseCh <- &speechpb.StreamingRecognizeResponse{
-			Results: []*speechpb.StreamingRecognitionResult{
-				{
-					Alternatives: []*speechpb.SpeechRecognitionAlternative{
-						{Transcript: "a"},
-					},
-					IsFinal: false,
-				},
-				{
-					Alternatives: []*speechpb.SpeechRecognitionAlternative{
-						{Transcript: "b"},
-					},
-					IsFinal: false,
-				},
-				{
-					Alternatives: []*speechpb.SpeechRecognitionAlternative{
-						{Transcript: "c"},
-					},
-					IsFinal: false,
-				},
-			},
-		}
-		<-processCh
+
 		// no alternatives must be skipped
 		responseCh <- &speechpb.StreamingRecognizeResponse{
 			Results: []*speechpb.StreamingRecognitionResult{
@@ -108,7 +82,8 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 				},
 			},
 		}
-		// (3) 確定応答レスポンス
+
+		// IsFinal: true
 		responseCh <- &speechpb.StreamingRecognizeResponse{
 			Results: []*speechpb.StreamingRecognitionResult{
 				{
@@ -126,22 +101,6 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 			},
 		}
 		<-processCh
-		// (4) 中間応答レスポンス
-		responseCh <- &speechpb.StreamingRecognizeResponse{
-			Results: []*speechpb.StreamingRecognitionResult{
-				{
-					Alternatives: []*speechpb.SpeechRecognitionAlternative{
-						{Transcript: "x"},
-					},
-				},
-				{
-					Alternatives: []*speechpb.SpeechRecognitionAlternative{
-						{Transcript: "y"},
-					},
-				},
-			},
-		}
-		<-processCh
 
 		// 中断して完了まで待つ
 		cancel()
@@ -151,16 +110,23 @@ func Test_ResponseProcessor_Start(t *testing.T) {
 			t.Errorf("Start() error = %v, want %v", got, context.Canceled)
 		}
 
-		// (3) の確定分 + 途中終了した (4)
-		wantResult := "abcd" + "xy"
-		if got := resultBuf.String(); got != wantResult {
-			t.Errorf("Start() wrote results: %v, want %v", got, wantResult)
+		wantResults := [][]*model.Result{
+			{
+				{Transcript: "a", IsFinal: false},
+				{Transcript: "b", IsFinal: false},
+			},
+			{
+				{Transcript: "abcd", IsFinal: true},
+				{Transcript: "x", IsFinal: false},
+			},
 		}
-
-		// (1) + (2) + (3) の未確定分 + (4)
-		wantInterim := "ab" + "abc" + "x" + "xy"
-		if got := interimBuf.String(); got != wantInterim {
-			t.Errorf("Start() wrote interims: %v, want %v", got, wantInterim)
+		close(resultCh)
+		gotResults := make([][]*model.Result, 0, len(resultCh))
+		for rs := range resultCh {
+			gotResults = append(gotResults, rs)
+		}
+		if diff := cmp.Diff(gotResults, wantResults); diff != "" {
+			t.Errorf("unexpected result: (-got +want)\n%s", diff)
 		}
 	})
 

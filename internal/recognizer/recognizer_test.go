@@ -12,6 +12,7 @@ import (
 	"cloud.google.com/go/speech/apiv2/speechpb"
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	myspeechpb "github.com/hekt/voice-recognition/internal/interfaces/speechpb"
+	"github.com/hekt/voice-recognition/internal/recognizer/model"
 	"github.com/hekt/voice-recognition/internal/testutil"
 )
 
@@ -161,6 +162,7 @@ func Test_Recognizer_Start(t *testing.T) {
 		audioSender       AudioSenderInterface
 		reseponseReceiver ResponseReceiverInterface
 		responseProcessor ResponseProcessorInterface
+		resultWriter      ResultWriterInterface
 		processMonitor    ProcessMonitorInterface
 		client            myspeech.Client
 		audioCh           chan []byte
@@ -201,6 +203,11 @@ func Test_Recognizer_Start(t *testing.T) {
 					},
 				},
 				responseProcessor: &ResponseProcessorInterfaceMock{
+					StartFunc: func(context.Context) error {
+						return nil
+					},
+				},
+				resultWriter: &ResultWriterInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
 					},
@@ -254,6 +261,11 @@ func Test_Recognizer_Start(t *testing.T) {
 						return nil
 					},
 				},
+				resultWriter: &ResultWriterInterfaceMock{
+					StartFunc: func(context.Context) error {
+						return nil
+					},
+				},
 				processMonitor: &ProcessMonitorInterfaceMock{
 					StartFunc: func(context.Context) error {
 						return nil
@@ -281,6 +293,7 @@ func Test_Recognizer_Start(t *testing.T) {
 				audioSender:       tt.fields.audioSender,
 				reseponseReceiver: tt.fields.reseponseReceiver,
 				responseProcessor: tt.fields.responseProcessor,
+				resultWriter:      tt.fields.resultWriter,
 				processMonitor:    tt.fields.processMonitor,
 				client:            tt.fields.client,
 				audioCh:           tt.fields.audioCh,
@@ -350,6 +363,11 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 				return nil
 			},
 		}
+		resultWriter := &ResultWriterInterfaceMock{
+			StartFunc: func(context.Context) error {
+				return nil
+			},
+		}
 		processMonitor := &ProcessMonitorInterfaceMock{
 			StartFunc: func(context.Context) error {
 				return nil
@@ -362,6 +380,7 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 			audioSender:       audioSender,
 			reseponseReceiver: responseReceiver,
 			responseProcessor: responseProcessor,
+			resultWriter:      resultWriter,
 			processMonitor:    processMonitor,
 			client:            clientMock,
 			audioCh:           audioCh,
@@ -407,20 +426,18 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 		}
 	})
 
-	t.Run("receive,process,monitor", func(t *testing.T) {
+	t.Run("receive,process,write", func(t *testing.T) {
 		// io writers
-		resultWriter := &bytes.Buffer{}
-		interimWriter := &bytes.Buffer{}
+		ioResultWriter := &bytes.Buffer{}
+		ioInterimWriter := &bytes.Buffer{}
 
 		// channels
 		audioCh := make(chan []byte, 1)
 		sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
 		receiveStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient)
 		responseCh := make(chan *speechpb.StreamingRecognizeResponse)
-		// Buffer size of 1 to avoid deadlock.
-		// If the context is canceled and processMonitor stops before reading from processCh,
-		// processCh will block responseProcessor indefinitely.
-		processCh := make(chan struct{}, 1)
+		resultCh := make(chan []*model.Result)
+		processCh := make(chan struct{}, 4)
 
 		// clients
 		recvResponseCh := make(chan *speechpb.StreamingRecognizeResponse)
@@ -461,7 +478,8 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 			},
 		}
 		responseReceiver := NewResponseReceiver(responseCh, receiveStreamCh)
-		responseProcessor := NewResponseProcessor(resultWriter, interimWriter, responseCh, processCh)
+		responseProcessor := NewResponseProcessor(responseCh, resultCh, processCh)
+		resultWriter := NewResultWriter(resultCh, ioResultWriter, ioInterimWriter)
 		processMonitor := NewProcessMonitor(processCh, time.Minute)
 
 		r := &Recognizer{
@@ -470,6 +488,7 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 			audioSender:       audioSender,
 			reseponseReceiver: responseReceiver,
 			responseProcessor: responseProcessor,
+			resultWriter:      resultWriter,
 			processMonitor:    processMonitor,
 			client:            clientMock,
 			audioCh:           audioCh,
@@ -511,6 +530,9 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 		recvResponseCh <- responseBuilder("aaaabbbbc", true)
 		close(recvResponseCh)
 
+		// wait for process to finish
+		time.Sleep(100 * time.Millisecond)
+
 		// Close context to stop recognizer.
 		cancel()
 
@@ -521,10 +543,10 @@ func Test_Recognizer_Start_Dataflow(t *testing.T) {
 		if !errors.Is(got, context.Canceled) {
 			t.Errorf("recognizer.Start() error = %v, want %v", got, context.Canceled)
 		}
-		if g, w := resultWriter.String(), "aaaabbbbc"; g != w {
+		if g, w := ioResultWriter.String(), "aaaabbbbc"; g != w {
 			t.Errorf("resultWriter = %q, want %q", g, w)
 		}
-		if g, w := interimWriter.String(), "aaaabbbb"; g != w {
+		if g, w := ioInterimWriter.String(), "aaaabbbb"; g != w {
 			t.Errorf("interimWriter = %q, want %q", g, w)
 		}
 	})

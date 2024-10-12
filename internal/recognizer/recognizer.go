@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/hekt/voice-recognition/internal/interfaces/speech"
+	"github.com/hekt/voice-recognition/internal/recognizer/model"
 	"github.com/hekt/voice-recognition/internal/resource"
 )
 
@@ -23,6 +24,7 @@ type Recognizer struct {
 	audioSender       AudioSenderInterface
 	reseponseReceiver ResponseReceiverInterface
 	responseProcessor ResponseProcessorInterface
+	resultWriter      ResultWriterInterface
 	processMonitor    ProcessMonitorInterface
 
 	// client は Speech-to-Text API のクライアント。
@@ -47,8 +49,8 @@ func New(
 	inactiveTimeout time.Duration,
 	client speech.Client,
 	audioReader io.Reader,
-	resultWriter io.Writer,
-	interimWriter io.Writer,
+	ioResultWriter io.Writer,
+	ioInterimWriter io.Writer,
 ) (*Recognizer, error) {
 	if projectID == "" {
 		return nil, errors.New("project ID must be specified")
@@ -71,16 +73,17 @@ func New(
 	if audioReader == nil {
 		return nil, errors.New("audio reader must be specified")
 	}
-	if resultWriter == nil {
+	if ioResultWriter == nil {
 		return nil, errors.New("result writer must be specified")
 	}
-	if interimWriter == nil {
+	if ioInterimWriter == nil {
 		return nil, errors.New("interim writer must be specified")
 	}
 
 	// not sure what is the appropriate buffer size.
 	audioCh := make(chan []byte, 10)
 	responseCh := make(chan *speechpb.StreamingRecognizeResponse, 10)
+	resultCh := make(chan []*model.Result, 10)
 	// if the stream is not taken out, there is no need to create new stream.
 	// so buffer size is set to 1.
 	sendStreamCh := make(chan speechpb.Speech_StreamingRecognizeClient, 1)
@@ -98,10 +101,14 @@ func New(
 	audioSender := NewAudioSender(audioCh, sendStreamCh)
 	responseReceiver := NewResponseReceiver(responseCh, receiveStreamCh)
 	responseProcessor := NewResponseProcessor(
-		&DecoratedResultWriter{Writer: resultWriter},
-		&DecoratedInterimWriter{Writer: interimWriter},
 		responseCh,
+		resultCh,
 		processCh,
+	)
+	resultWriter := NewResultWriter(
+		resultCh,
+		&DecoratedResultWriter{Writer: ioResultWriter},
+		&DecoratedInterimWriter{Writer: ioInterimWriter},
 	)
 	processMonitor := NewProcessMonitor(processCh, inactiveTimeout)
 
@@ -111,6 +118,7 @@ func New(
 		audioSender:       audioSender,
 		reseponseReceiver: responseReceiver,
 		responseProcessor: responseProcessor,
+		resultWriter:      resultWriter,
 		processMonitor:    processMonitor,
 
 		client:          client,
@@ -178,6 +186,12 @@ func (r *Recognizer) Start(ctx context.Context) error {
 	eg.Go(func() error {
 		if err := r.responseProcessor.Start(ctx); err != nil {
 			return fmt.Errorf("error occured in response processor: %w", err)
+		}
+		return nil
+	})
+	eg.Go(func() error {
+		if err := r.resultWriter.Start(ctx); err != nil {
+			return fmt.Errorf("error occured in result writer: %w", err)
 		}
 		return nil
 	})
