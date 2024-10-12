@@ -66,18 +66,14 @@ func NewRecognizeCommand() *cli.Command {
 				os.FileMode(0o644),
 			)
 			interimWriter := os.Stdout
-			client, err := speech.NewClient(cCtx.Context)
-			if err != nil {
-				return fmt.Errorf("failed to create speech client: %w", err)
-			}
 
 			recognizer, err := recognizer.New(
+				cCtx.Context,
 				cCtx.String(projectFlag.Name),
 				cCtx.String(recognizerFlag.Name),
 				cCtx.Duration("interval"),
 				cCtx.Int("buffersize"),
 				cCtx.Duration("timeout"),
-				client,
 				audioReader,
 				resultWriter,
 				interimWriter,
