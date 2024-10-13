@@ -20,7 +20,7 @@ jobs:
       - name: fetch vsok_api.h
         run: curl -sSL https://raw.githubusercontent.com/alphacep/vosk-api/refs/tags/v0.3.42/src/vosk_api.h -o lib/vosk/vosk_api.h
       - name: add vosk to include path
-        run: echo "export CGO_CFLAGS=-I$(pwd)/lib/vosk" >> $GITHUB_ENV
+        run: echo "CGO_CFLAGS=-I$(pwd)/lib/vosk" >> $GITHUB_ENV
       - uses: dominikh/staticcheck-action@v1
         with:
           version: "latest"
