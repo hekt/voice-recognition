@@ -53,7 +53,7 @@ var languageCodeFlag = &cli.StringSliceFlag{
 var outputFlag = &cli.StringFlag{
 	Name:  "output",
 	Usage: "Output file path",
-	Value: fmt.Sprintf("output/%d.json", time.Now().Unix()),
+	Value: fmt.Sprintf("output/%d.txt", time.Now().Unix()),
 }
 
 var bufferSizeFlag = &cli.IntFlag{
