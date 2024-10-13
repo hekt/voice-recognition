@@ -1,6 +1,11 @@
 package app
 
-import "github.com/urfave/cli/v2"
+import (
+	"fmt"
+	"time"
+
+	"github.com/urfave/cli/v2"
+)
 
 var projectFlag = &cli.StringFlag{
 	Name:  "project",
@@ -43,6 +48,24 @@ var languageCodeFlag = &cli.StringSliceFlag{
 	Name:    "language-code",
 	Aliases: []string{"l"},
 	Usage:   "Language code possibly multiple",
+}
+
+var outputFlag = &cli.StringFlag{
+	Name:  "output",
+	Usage: "Output file path",
+	Value: fmt.Sprintf("output/%d.json", time.Now().Unix()),
+}
+
+var bufferSizeFlag = &cli.IntFlag{
+	Name:  "buffersize",
+	Usage: "Buffer size bytes",
+	Value: 1024,
+}
+
+var timeoutFlag = &cli.DurationFlag{
+	Name:  "timeout",
+	Usage: "Inactive timeout duration",
+	Value: 5 * time.Minute,
 }
 
 //

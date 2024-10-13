@@ -10,6 +10,7 @@ import (
 	"time"
 
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
+	myvosk "github.com/hekt/voice-recognition/internal/interfaces/vosk"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 	"github.com/hekt/voice-recognition/internal/testutil"
 )
@@ -114,6 +115,75 @@ func Test_New(t *testing.T) {
 			}
 			if !tt.wantErr && got == nil {
 				t.Errorf("New() = %v, want non-nil", got)
+			}
+		})
+	}
+}
+
+func TestNewVoskRecognizer(t *testing.T) {
+	type args struct {
+		voskRecognizer  myvosk.VoskRecognizer
+		bufferSize      int
+		inactiveTimeout time.Duration
+		ioAudioReader   io.Reader
+		ioResultWriter  io.Writer
+		ioInterimWriter io.Writer
+	}
+	baseArgs := args{
+		voskRecognizer:  &myvosk.VoskRecognizerMock{},
+		bufferSize:      1024,
+		inactiveTimeout: time.Minute,
+		ioAudioReader:   &bytes.Buffer{},
+		ioResultWriter:  &bytes.Buffer{},
+		ioInterimWriter: &bytes.Buffer{},
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "success",
+			args: baseArgs,
+		},
+		{
+			name: "invalid buffer size",
+			args: func() args {
+				a := baseArgs
+				a.bufferSize = 0
+				return a
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "invalid inactive timeout",
+			args: func() args {
+				a := baseArgs
+				a.inactiveTimeout = 0
+				return a
+			}(),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewVoskRecognizer(
+				tt.args.voskRecognizer,
+				tt.args.bufferSize,
+				tt.args.inactiveTimeout,
+				tt.args.ioAudioReader,
+				tt.args.ioResultWriter,
+				tt.args.ioInterimWriter,
+			)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewVoskRecognizer() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+			if got == nil {
+				t.Errorf("NewVoskRecognizer() = %v, want non-nil", got)
 			}
 		})
 	}

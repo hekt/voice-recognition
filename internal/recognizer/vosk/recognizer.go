@@ -52,7 +52,7 @@ func (r *Recognizer) Start(ctx context.Context) error {
 
 			n := r.recognizer.AcceptWaveform(audio)
 
-			var result *model.Result
+			var results []*model.Result
 			if n == 0 {
 				t, err := parsePartialResult(r.recognizer.PartialResult())
 				if err != nil {
@@ -61,25 +61,26 @@ func (r *Recognizer) Start(ctx context.Context) error {
 				if t == "" {
 					continue
 				}
-				result = &model.Result{
-					Transcript: t,
-					IsFinal:    false,
+				results = []*model.Result{
+					{Transcript: t, IsFinal: false},
 				}
 			} else {
 				t, err := parseResult(r.recognizer.Result())
 				if err != nil {
 					return fmt.Errorf("failed to parse result: %w", err)
 				}
-				result = &model.Result{
-					Transcript: t,
-					IsFinal:    true,
+				if t == "" {
+					continue
+				}
+				results = []*model.Result{
+					{Transcript: t, IsFinal: true},
 				}
 			}
 
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case r.resultCh <- []*model.Result{result}:
+			case r.resultCh <- results:
 			}
 		}
 	}

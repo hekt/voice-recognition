@@ -8,6 +8,7 @@ func New() *cli.App {
 	return &cli.App{
 		Commands: []*cli.Command{
 			NewRecognizeCommand(),
+			NewVoskRecognizeCommand(),
 			NewRecognizerCreateCommand(),
 			NewRecognizerDeleteCommand(),
 			NewRecognizerListCommand(),

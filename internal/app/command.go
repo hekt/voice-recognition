@@ -10,6 +10,7 @@ import (
 	"time"
 
 	speech "cloud.google.com/go/speech/apiv2"
+	vosk "github.com/alphacep/vosk-api/go"
 	"github.com/hekt/voice-recognition/internal/file"
 	"github.com/hekt/voice-recognition/internal/logger"
 	"github.com/hekt/voice-recognition/internal/recognizer"
@@ -25,25 +26,13 @@ func NewRecognizeCommand() *cli.Command {
 			requiredProjectFlag,
 			requiredRecognizerFlag,
 			debugFlag,
-			&cli.StringFlag{
-				Name:  "output",
-				Usage: "Output file path",
-				Value: fmt.Sprintf("output/%d.json", time.Now().Unix()),
-			},
+			outputFlag,
+			bufferSizeFlag,
+			timeoutFlag,
 			&cli.DurationFlag{
 				Name:  "interval",
 				Usage: "Reconnect interval duration",
 				Value: time.Minute,
-			},
-			&cli.IntFlag{
-				Name:  "buffersize",
-				Usage: "Buffer size bytes",
-				Value: 1024,
-			},
-			&cli.DurationFlag{
-				Name:  "timeout",
-				Usage: "Inactive timeout duration",
-				Value: 5 * time.Minute,
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
@@ -55,13 +44,13 @@ func NewRecognizeCommand() *cli.Command {
 
 			// This behavior ensures the output file is created early,
 			// making it easier to use with tools like `tail -f`.
-			if err := prepareOutputFile(cCtx.String("output")); err != nil {
+			if err := prepareOutputFile(cCtx.String(outputFlag.Name)); err != nil {
 				return fmt.Errorf("failed to prepare output file: %w", err)
 			}
 
 			audioReader := os.Stdin
 			resultWriter := file.NewOpenCloseFileWriter(
-				cCtx.String("output"),
+				cCtx.String(outputFlag.Name),
 				os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 				os.FileMode(0o644),
 			)
@@ -78,8 +67,77 @@ func NewRecognizeCommand() *cli.Command {
 				cCtx.String(projectFlag.Name),
 				cCtx.String(recognizerFlag.Name),
 				cCtx.Duration("interval"),
-				cCtx.Int("buffersize"),
-				cCtx.Duration("timeout"),
+				cCtx.Int(bufferSizeFlag.Name),
+				cCtx.Duration(timeoutFlag.Name),
+				audioReader,
+				resultWriter,
+				interimWriter,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create recognizer: %w", err)
+			}
+
+			if err := recognizer.Start(cCtx.Context); err != nil {
+				if errors.Is(err, context.Canceled) {
+					return nil
+				}
+				return fmt.Errorf("failed to start recognizer: %w", err)
+			}
+
+			return nil
+		},
+	}
+}
+
+func NewVoskRecognizeCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "recognize-vosk",
+		Usage: "recognize voice using Vosk",
+		Flags: []cli.Flag{
+			debugFlag,
+			outputFlag,
+			bufferSizeFlag,
+			timeoutFlag,
+			&cli.StringFlag{
+				Name:  "model",
+				Usage: "path to model directory",
+				Value: "model",
+			},
+		},
+		Action: func(cCtx *cli.Context) error {
+			if cCtx.Bool(debugFlag.Name) {
+				if err := setLogger(slog.LevelDebug); err != nil {
+					return fmt.Errorf("failed to set logger: %w", err)
+				}
+			}
+
+			outputFile, err := os.OpenFile(
+				cCtx.String(outputFlag.Name),
+				os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+				os.FileMode(0o644),
+			)
+			if err != nil {
+				return fmt.Errorf("failed to open output file: %w", err)
+			}
+
+			audioReader := os.Stdin
+			resultWriter := outputFile
+			interimWriter := os.Stdout
+
+			vosk.SetLogLevel(-1)
+			model, err := vosk.NewModel(cCtx.String("model"))
+			if err != nil {
+				return fmt.Errorf("failed to load model: %w", err)
+			}
+			voskRecognizer, err := vosk.NewRecognizer(model, 16000.0)
+			if err != nil {
+				return fmt.Errorf("failed to create recognizer: %w", err)
+			}
+
+			recognizer, err := recognizer.NewVoskRecognizer(
+				voskRecognizer,
+				cCtx.Int(bufferSizeFlag.Name),
+				cCtx.Duration(timeoutFlag.Name),
 				audioReader,
 				resultWriter,
 				interimWriter,

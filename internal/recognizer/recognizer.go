@@ -13,8 +13,10 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
+	myvosk "github.com/hekt/voice-recognition/internal/interfaces/vosk"
 	"github.com/hekt/voice-recognition/internal/recognizer/google"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
+	"github.com/hekt/voice-recognition/internal/recognizer/vosk"
 )
 
 type Recognizer struct {
@@ -72,6 +74,56 @@ func New(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create google recognizer: %w", err)
+	}
+
+	audioReader := NewAudioReceiver(ioAudioReader, audioCh, bufferSize)
+	resultWriter := NewResultWriter(
+		resultCh,
+		&NotifyingWriter{
+			Writer:   &DecoratedResultWriter{Writer: ioResultWriter},
+			NotifyCh: processCh,
+		},
+		&NotifyingWriter{
+			Writer:   &DecoratedInterimWriter{Writer: ioInterimWriter},
+			NotifyCh: processCh,
+		},
+	)
+	processMonitor := NewProcessMonitor(processCh, inactiveTimeout)
+
+	return &Recognizer{
+		recognizer:     recognizer,
+		audioReader:    audioReader,
+		resultWriter:   resultWriter,
+		processMonitor: processMonitor,
+
+		audioCh:   audioCh,
+		resultCh:  resultCh,
+		processCh: processCh,
+	}, nil
+}
+
+func NewVoskRecognizer(
+	voskRecognizer myvosk.VoskRecognizer,
+	bufferSize int,
+	inactiveTimeout time.Duration,
+	ioAudioReader io.Reader,
+	ioResultWriter io.Writer,
+	ioInterimWriter io.Writer,
+) (*Recognizer, error) {
+	if bufferSize < 1024 {
+		return nil, errors.New("buffer size must be greater than or equal to 1024")
+	}
+	if inactiveTimeout == 0 {
+		return nil, errors.New("inactive timeout must be specified")
+	}
+
+	audioCh := make(chan []byte, 10)
+	resultCh := make(chan []*model.Result, 10)
+	processCh := make(chan struct{}, 1)
+
+	recognizer, err := vosk.NewRecognizer(voskRecognizer, audioCh, resultCh)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create vosk recognizer: %w", err)
 	}
 
 	audioReader := NewAudioReceiver(ioAudioReader, audioCh, bufferSize)
