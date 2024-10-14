@@ -10,11 +10,11 @@ import (
 	"time"
 
 	speech "cloud.google.com/go/speech/apiv2"
-	vosk "github.com/alphacep/vosk-api/go"
 	"github.com/hekt/voice-recognition/internal/file"
 	"github.com/hekt/voice-recognition/internal/logger"
 	"github.com/hekt/voice-recognition/internal/recognizer"
 	"github.com/hekt/voice-recognition/internal/resource"
+	vosk "github.com/hekt/vosk-api/go"
 	"github.com/urfave/cli/v2"
 )
 

@@ -5,9 +5,9 @@ go 1.23.1
 require (
 	cloud.google.com/go/longrunning v0.6.0
 	cloud.google.com/go/speech v1.25.1
-	github.com/alphacep/vosk-api/go v0.3.42
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.13.0
+	github.com/hekt/vosk-api v0.3.42-mod3
 	github.com/urfave/cli/v2 v2.27.4
 	golang.org/x/sync v0.8.0
 	google.golang.org/api v0.196.0
