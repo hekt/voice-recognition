@@ -18,378 +18,362 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func NewRecognizeCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "recognize",
-		Usage: "recognize voice",
-		Flags: []cli.Flag{
-			requiredProjectFlag,
-			requiredRecognizerFlag,
-			debugFlag,
-			outputFlag,
-			bufferSizeFlag,
-			timeoutFlag,
-			&cli.DurationFlag{
-				Name:  "interval",
-				Usage: "Reconnect interval duration",
-				Value: time.Minute,
-			},
+var recognizeCommand = &cli.Command{
+	Name:  "recognize",
+	Usage: "recognize voice",
+	Flags: []cli.Flag{
+		requiredProjectFlag,
+		requiredRecognizerFlag,
+		debugFlag,
+		outputFlag,
+		bufferSizeFlag,
+		timeoutFlag,
+		&cli.DurationFlag{
+			Name:  "interval",
+			Usage: "Reconnect interval duration",
+			Value: time.Minute,
 		},
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.Bool(debugFlag.Name) {
-				if err := setLogger(slog.LevelDebug); err != nil {
-					return fmt.Errorf("failed to set logger: %w", err)
-				}
+	},
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.Bool(debugFlag.Name) {
+			if err := setLogger(slog.LevelDebug); err != nil {
+				return fmt.Errorf("failed to set logger: %w", err)
 			}
+		}
 
-			// This behavior ensures the output file is created early,
-			// making it easier to use with tools like `tail -f`.
-			if err := prepareOutputFile(cCtx.String(outputFlag.Name)); err != nil {
-				return fmt.Errorf("failed to prepare output file: %w", err)
+		// This behavior ensures the output file is created early,
+		// making it easier to use with tools like `tail -f`.
+		if err := prepareOutputFile(cCtx.String(outputFlag.Name)); err != nil {
+			return fmt.Errorf("failed to prepare output file: %w", err)
+		}
+
+		audioReader := os.Stdin
+		resultWriter := file.NewOpenCloseFileWriter(
+			cCtx.String(outputFlag.Name),
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+			os.FileMode(0o644),
+		)
+		interimWriter := os.Stdout
+
+		client, err := speech.NewClient(cCtx.Context)
+		if err != nil {
+			return fmt.Errorf("failed to create speech client: %w", err)
+		}
+
+		recognizer, err := recognizer.New(
+			cCtx.Context,
+			client,
+			cCtx.String(projectFlag.Name),
+			cCtx.String(recognizerFlag.Name),
+			cCtx.Duration("interval"),
+			cCtx.Int(bufferSizeFlag.Name),
+			cCtx.Duration(timeoutFlag.Name),
+			audioReader,
+			resultWriter,
+			interimWriter,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create recognizer: %w", err)
+		}
+
+		if err := recognizer.Start(cCtx.Context); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil
 			}
+			return fmt.Errorf("failed to start recognizer: %w", err)
+		}
 
-			audioReader := os.Stdin
-			resultWriter := file.NewOpenCloseFileWriter(
-				cCtx.String(outputFlag.Name),
-				os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-				os.FileMode(0o644),
-			)
-			interimWriter := os.Stdout
-
-			client, err := speech.NewClient(cCtx.Context)
-			if err != nil {
-				return fmt.Errorf("failed to create speech client: %w", err)
-			}
-
-			recognizer, err := recognizer.New(
-				cCtx.Context,
-				client,
-				cCtx.String(projectFlag.Name),
-				cCtx.String(recognizerFlag.Name),
-				cCtx.Duration("interval"),
-				cCtx.Int(bufferSizeFlag.Name),
-				cCtx.Duration(timeoutFlag.Name),
-				audioReader,
-				resultWriter,
-				interimWriter,
-			)
-			if err != nil {
-				return fmt.Errorf("failed to create recognizer: %w", err)
-			}
-
-			if err := recognizer.Start(cCtx.Context); err != nil {
-				if errors.Is(err, context.Canceled) {
-					return nil
-				}
-				return fmt.Errorf("failed to start recognizer: %w", err)
-			}
-
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func NewVoskRecognizeCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "recognize-vosk",
-		Usage: "recognize voice using Vosk",
-		Flags: []cli.Flag{
-			debugFlag,
-			outputFlag,
-			bufferSizeFlag,
-			timeoutFlag,
-			&cli.StringFlag{
-				Name:  "model",
-				Usage: "path to model directory",
-				Value: "model",
-			},
+var voskRecognizeCommand = &cli.Command{
+	Name:  "recognize-vosk",
+	Usage: "recognize voice using Vosk",
+	Flags: []cli.Flag{
+		debugFlag,
+		outputFlag,
+		bufferSizeFlag,
+		timeoutFlag,
+		&cli.StringFlag{
+			Name:  "model",
+			Usage: "path to model directory",
+			Value: "model",
 		},
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.Bool(debugFlag.Name) {
-				if err := setLogger(slog.LevelDebug); err != nil {
-					return fmt.Errorf("failed to set logger: %w", err)
-				}
+	},
+	Action: func(cCtx *cli.Context) error {
+		if cCtx.Bool(debugFlag.Name) {
+			if err := setLogger(slog.LevelDebug); err != nil {
+				return fmt.Errorf("failed to set logger: %w", err)
 			}
+		}
 
-			outputFile, err := os.OpenFile(
-				cCtx.String(outputFlag.Name),
-				os.O_APPEND|os.O_CREATE|os.O_WRONLY,
-				os.FileMode(0o644),
-			)
-			if err != nil {
-				return fmt.Errorf("failed to open output file: %w", err)
+		outputFile, err := os.OpenFile(
+			cCtx.String(outputFlag.Name),
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
+			os.FileMode(0o644),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to open output file: %w", err)
+		}
+
+		audioReader := os.Stdin
+		resultWriter := outputFile
+		interimWriter := os.Stdout
+
+		vosk.SetLogLevel(-1)
+		model, err := vosk.NewModel(cCtx.String("model"))
+		if err != nil {
+			return fmt.Errorf("failed to load model: %w", err)
+		}
+		voskRecognizer, err := vosk.NewRecognizer(model, 16000.0)
+		if err != nil {
+			return fmt.Errorf("failed to create recognizer: %w", err)
+		}
+
+		recognizer, err := recognizer.NewVoskRecognizer(
+			voskRecognizer,
+			cCtx.Int(bufferSizeFlag.Name),
+			cCtx.Duration(timeoutFlag.Name),
+			audioReader,
+			resultWriter,
+			interimWriter,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create recognizer: %w", err)
+		}
+
+		if err := recognizer.Start(cCtx.Context); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil
 			}
+			return fmt.Errorf("failed to start recognizer: %w", err)
+		}
 
-			audioReader := os.Stdin
-			resultWriter := outputFile
-			interimWriter := os.Stdout
-
-			vosk.SetLogLevel(-1)
-			model, err := vosk.NewModel(cCtx.String("model"))
-			if err != nil {
-				return fmt.Errorf("failed to load model: %w", err)
-			}
-			voskRecognizer, err := vosk.NewRecognizer(model, 16000.0)
-			if err != nil {
-				return fmt.Errorf("failed to create recognizer: %w", err)
-			}
-
-			recognizer, err := recognizer.NewVoskRecognizer(
-				voskRecognizer,
-				cCtx.Int(bufferSizeFlag.Name),
-				cCtx.Duration(timeoutFlag.Name),
-				audioReader,
-				resultWriter,
-				interimWriter,
-			)
-			if err != nil {
-				return fmt.Errorf("failed to create recognizer: %w", err)
-			}
-
-			if err := recognizer.Start(cCtx.Context); err != nil {
-				if errors.Is(err, context.Canceled) {
-					return nil
-				}
-				return fmt.Errorf("failed to start recognizer: %w", err)
-			}
-
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func NewRecognizerCreateCommand() *cli.Command {
-	return &cli.Command{
-		Category: "manage",
-		Name:     "recognizer-create",
-		Usage:    "create recognizer for Speech-to-Text API",
-		Flags: []cli.Flag{
-			requiredProjectFlag,
-			requiredRecognizerFlag,
-			modelFlag,
-			languageCodeFlag,
-			phraseSetFlag,
-		},
-		Action: func(cCtx *cli.Context) error {
-			manager, err := buildRecognizerManager(cCtx.Context)
-			if err != nil {
-				return fmt.Errorf("failed to build recognizer manager: %w", err)
-			}
+var recognizerCreateCommand = &cli.Command{
+	Category: "manage",
+	Name:     "recognizer-create",
+	Usage:    "create recognizer for Speech-to-Text API",
+	Flags: []cli.Flag{
+		requiredProjectFlag,
+		requiredRecognizerFlag,
+		modelFlag,
+		languageCodeFlag,
+		phraseSetFlag,
+	},
+	Action: func(cCtx *cli.Context) error {
+		manager, err := buildRecognizerManager(cCtx.Context)
+		if err != nil {
+			return fmt.Errorf("failed to build recognizer manager: %w", err)
+		}
 
-			// TODO support multiple language code
-			languageCode := ""
-			if fs := cCtx.StringSlice(languageCodeFlag.Name); len(fs) > 0 {
-				languageCode = fs[0]
-			}
+		// TODO support multiple language code
+		languageCode := ""
+		if fs := cCtx.StringSlice(languageCodeFlag.Name); len(fs) > 0 {
+			languageCode = fs[0]
+		}
 
-			args := resource.CreateRecognizerArgs{
-				ProjectID:      cCtx.String(projectFlag.Name),
-				RecognizerName: cCtx.String(recognizerFlag.Name),
-				Model:          cCtx.String(modelFlag.Name),
-				LanguageCode:   languageCode,
-				PhraseSet:      cCtx.String(phraseSetFlag.Name),
-			}
-			if err := manager.Create(cCtx.Context, args); err != nil {
-				return fmt.Errorf("failed to create recognizer: %w", err)
-			}
+		args := resource.CreateRecognizerArgs{
+			ProjectID:      cCtx.String(projectFlag.Name),
+			RecognizerName: cCtx.String(recognizerFlag.Name),
+			Model:          cCtx.String(modelFlag.Name),
+			LanguageCode:   languageCode,
+			PhraseSet:      cCtx.String(phraseSetFlag.Name),
+		}
+		if err := manager.Create(cCtx.Context, args); err != nil {
+			return fmt.Errorf("failed to create recognizer: %w", err)
+		}
 
-			fmt.Println("Recognizer created")
+		fmt.Println("Recognizer created")
 
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func NewRecognizerDeleteCommand() *cli.Command {
-	return &cli.Command{
-		Category: "manage",
-		Name:     "recognizer-delete",
-		Usage:    "delete recognizer for Speech-to-Text API",
-		Flags: []cli.Flag{
-			requiredProjectFlag,
-			requiredRecognizerFlag,
-		},
-		Action: func(cCtx *cli.Context) error {
-			manager, err := buildRecognizerManager(cCtx.Context)
-			if err != nil {
-				return fmt.Errorf("failed to build recognizer manager: %w", err)
-			}
+var recognizerDeleteCommand = &cli.Command{
+	Category: "manage",
+	Name:     "recognizer-delete",
+	Usage:    "delete recognizer for Speech-to-Text API",
+	Flags: []cli.Flag{
+		requiredProjectFlag,
+		requiredRecognizerFlag,
+	},
+	Action: func(cCtx *cli.Context) error {
+		manager, err := buildRecognizerManager(cCtx.Context)
+		if err != nil {
+			return fmt.Errorf("failed to build recognizer manager: %w", err)
+		}
 
-			args := resource.DeleteRecognizerArgs{
-				ProjectID:      cCtx.String(projectFlag.Name),
-				RecognizerName: cCtx.String(recognizerFlag.Name),
-			}
-			if err := manager.Delete(cCtx.Context, args); err != nil {
-				return fmt.Errorf("failed to delete recognizer: %w", err)
-			}
+		args := resource.DeleteRecognizerArgs{
+			ProjectID:      cCtx.String(projectFlag.Name),
+			RecognizerName: cCtx.String(recognizerFlag.Name),
+		}
+		if err := manager.Delete(cCtx.Context, args); err != nil {
+			return fmt.Errorf("failed to delete recognizer: %w", err)
+		}
 
-			fmt.Println("Recognizer deleted")
+		fmt.Println("Recognizer deleted")
 
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func NewRecognizerListCommand() *cli.Command {
-	return &cli.Command{
-		Category: "manage",
-		Name:     "recognizer-list",
-		Usage:    "list recognizers for Speech-to-Text API",
-		Flags: []cli.Flag{
-			requiredProjectFlag,
-		},
-		Action: func(cCtx *cli.Context) error {
-			manager, err := buildRecognizerManager(cCtx.Context)
-			if err != nil {
-				return fmt.Errorf("failed to build recognizer manager: %w", err)
-			}
+var recognizerListCommand = &cli.Command{
+	Category: "manage",
+	Name:     "recognizer-list",
+	Usage:    "list recognizers for Speech-to-Text API",
+	Flags: []cli.Flag{
+		requiredProjectFlag,
+	},
+	Action: func(cCtx *cli.Context) error {
+		manager, err := buildRecognizerManager(cCtx.Context)
+		if err != nil {
+			return fmt.Errorf("failed to build recognizer manager: %w", err)
+		}
 
-			args := resource.ListRecognizerArgs{
-				ProjectID: cCtx.String(projectFlag.Name),
-			}
-			recognizers, err := manager.List(cCtx.Context, args)
-			if err != nil {
-				return fmt.Errorf("failed to list recognizers: %w", err)
-			}
+		args := resource.ListRecognizerArgs{
+			ProjectID: cCtx.String(projectFlag.Name),
+		}
+		recognizers, err := manager.List(cCtx.Context, args)
+		if err != nil {
+			return fmt.Errorf("failed to list recognizers: %w", err)
+		}
 
-			for _, recognizer := range recognizers {
-				fmt.Println(recognizer.Value)
-			}
+		for _, recognizer := range recognizers {
+			fmt.Println(recognizer.Value)
+		}
 
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func NewPhraseSetCreateCommand() *cli.Command {
-	return &cli.Command{
-		Category: "manage",
-		Name:     "phrase-set-create",
-		Usage:    "create phrase set for Speech-to-Text API",
-		Flags: []cli.Flag{
-			requiredProjectFlag,
-			requiredPhraseSetFlag,
-			phraseFlag,
-			phrasesFlag,
-			boostFlag,
-		},
-		Action: func(cCtx *cli.Context) error {
-			manager, err := buildPhraseSetManager(cCtx.Context)
-			if err != nil {
-				return fmt.Errorf("failed to build phrase set manager: %w", err)
-			}
+var phraseSetCreateCommand = &cli.Command{
+	Category: "manage",
+	Name:     "phrase-set-create",
+	Usage:    "create phrase set for Speech-to-Text API",
+	Flags: []cli.Flag{
+		requiredProjectFlag,
+		requiredPhraseSetFlag,
+		phraseFlag,
+		phrasesFlag,
+		boostFlag,
+	},
+	Action: func(cCtx *cli.Context) error {
+		manager, err := buildPhraseSetManager(cCtx.Context)
+		if err != nil {
+			return fmt.Errorf("failed to build phrase set manager: %w", err)
+		}
 
-			rawPhrases := append(
-				strings.Split(cCtx.String(phrasesFlag.Name), ","),
-				cCtx.StringSlice(phraseFlag.Name)...,
-			)
-			phrases := make([]string, 0, len(rawPhrases))
-			for _, phrase := range rawPhrases {
-				trimed := strings.TrimSpace(phrase)
-				if trimed != "" {
-					phrases = append(phrases, trimed)
-				}
+		rawPhrases := append(
+			strings.Split(cCtx.String(phrasesFlag.Name), ","),
+			cCtx.StringSlice(phraseFlag.Name)...,
+		)
+		phrases := make([]string, 0, len(rawPhrases))
+		for _, phrase := range rawPhrases {
+			trimed := strings.TrimSpace(phrase)
+			if trimed != "" {
+				phrases = append(phrases, trimed)
 			}
-			if len(phrases) == 0 {
-				return fmt.Errorf("no valid phrases provided")
-			}
+		}
+		if len(phrases) == 0 {
+			return fmt.Errorf("no valid phrases provided")
+		}
 
-			args := resource.CreatePhraseSetArgs{
-				ProjectID:     cCtx.String(projectFlag.Name),
-				PhraseSetName: cCtx.String(phraseSetFlag.Name),
-				Phrases:       phrases,
-				Boost:         float32(cCtx.Float64(boostFlag.Name)),
-			}
-			if err := manager.Create(cCtx.Context, args); err != nil {
-				return fmt.Errorf("failed to create phrase set: %w", err)
-			}
+		args := resource.CreatePhraseSetArgs{
+			ProjectID:     cCtx.String(projectFlag.Name),
+			PhraseSetName: cCtx.String(phraseSetFlag.Name),
+			Phrases:       phrases,
+			Boost:         float32(cCtx.Float64(boostFlag.Name)),
+		}
+		if err := manager.Create(cCtx.Context, args); err != nil {
+			return fmt.Errorf("failed to create phrase set: %w", err)
+		}
 
-			fmt.Println("Phrase set created")
+		fmt.Println("Phrase set created")
 
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func NewPhraseSetUpdateCommand() *cli.Command {
-	return &cli.Command{
-		Category: "manage",
-		Name:     "phrase-set-update",
-		Usage:    "update phrase set for Speech-to-Text API",
-		Flags: []cli.Flag{
-			requiredProjectFlag,
-			requiredPhraseSetFlag,
-			phraseFlag,
-			phrasesFlag,
-			boostFlag,
-		},
-		Action: func(cCtx *cli.Context) error {
-			manager, err := buildPhraseSetManager(cCtx.Context)
-			if err != nil {
-				return fmt.Errorf("failed to build phrase set manager: %w", err)
-			}
+var phraseSetUpdateCommand = &cli.Command{
+	Category: "manage",
+	Name:     "phrase-set-update",
+	Usage:    "update phrase set for Speech-to-Text API",
+	Flags: []cli.Flag{
+		requiredProjectFlag,
+		requiredPhraseSetFlag,
+		phraseFlag,
+		phrasesFlag,
+		boostFlag,
+	},
+	Action: func(cCtx *cli.Context) error {
+		manager, err := buildPhraseSetManager(cCtx.Context)
+		if err != nil {
+			return fmt.Errorf("failed to build phrase set manager: %w", err)
+		}
 
-			rawPhrases := append(
-				strings.Split(cCtx.String(phrasesFlag.Name), ","),
-				cCtx.StringSlice(phraseFlag.Name)...,
-			)
-			phrases := make([]string, 0, len(rawPhrases))
-			for _, phrase := range rawPhrases {
-				trimed := strings.TrimSpace(phrase)
-				if trimed != "" {
-					phrases = append(phrases, trimed)
-				}
+		rawPhrases := append(
+			strings.Split(cCtx.String(phrasesFlag.Name), ","),
+			cCtx.StringSlice(phraseFlag.Name)...,
+		)
+		phrases := make([]string, 0, len(rawPhrases))
+		for _, phrase := range rawPhrases {
+			trimed := strings.TrimSpace(phrase)
+			if trimed != "" {
+				phrases = append(phrases, trimed)
 			}
-			if len(phrases) == 0 {
-				return fmt.Errorf("no valid phrases provided")
-			}
+		}
+		if len(phrases) == 0 {
+			return fmt.Errorf("no valid phrases provided")
+		}
 
-			args := resource.UpdatePhraseSetArgs{
-				ProjectID:     cCtx.String(projectFlag.Name),
-				PhraseSetName: cCtx.String(phraseSetFlag.Name),
-				Phrases:       phrases,
-				Boost:         float32(cCtx.Float64(boostFlag.Name)),
-			}
-			if err := manager.Update(cCtx.Context, args); err != nil {
-				return fmt.Errorf("failed to update phrase set: %w", err)
-			}
+		args := resource.UpdatePhraseSetArgs{
+			ProjectID:     cCtx.String(projectFlag.Name),
+			PhraseSetName: cCtx.String(phraseSetFlag.Name),
+			Phrases:       phrases,
+			Boost:         float32(cCtx.Float64(boostFlag.Name)),
+		}
+		if err := manager.Update(cCtx.Context, args); err != nil {
+			return fmt.Errorf("failed to update phrase set: %w", err)
+		}
 
-			fmt.Println("Phrase set updated")
+		fmt.Println("Phrase set updated")
 
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
-func NewPhraseSetListCommand() *cli.Command {
-	return &cli.Command{
-		Category: "manage",
-		Name:     "phrase-set-list",
-		Usage:    "list phrase sets for Speech-to-Text API",
-		Flags: []cli.Flag{
-			requiredProjectFlag,
-		},
-		Action: func(cCtx *cli.Context) error {
-			manager, err := buildPhraseSetManager(cCtx.Context)
-			if err != nil {
-				return fmt.Errorf("failed to build phrase set manager: %w", err)
-			}
+var phraseSetListCommand = &cli.Command{
+	Category: "manage",
+	Name:     "phrase-set-list",
+	Usage:    "list phrase sets for Speech-to-Text API",
+	Flags: []cli.Flag{
+		requiredProjectFlag,
+	},
+	Action: func(cCtx *cli.Context) error {
+		manager, err := buildPhraseSetManager(cCtx.Context)
+		if err != nil {
+			return fmt.Errorf("failed to build phrase set manager: %w", err)
+		}
 
-			args := resource.ListPhraseSetArgs{
-				ProjectID: cCtx.String(projectFlag.Name),
-			}
-			phraseSets, err := manager.List(cCtx.Context, args)
-			if err != nil {
-				return fmt.Errorf("failed to list phrase sets: %w", err)
-			}
+		args := resource.ListPhraseSetArgs{
+			ProjectID: cCtx.String(projectFlag.Name),
+		}
+		phraseSets, err := manager.List(cCtx.Context, args)
+		if err != nil {
+			return fmt.Errorf("failed to list phrase sets: %w", err)
+		}
 
-			for _, phraseSet := range phraseSets {
-				fmt.Println(phraseSet.Value)
-			}
+		for _, phraseSet := range phraseSets {
+			fmt.Println(phraseSet.Value)
+		}
 
-			return nil
-		},
-	}
+		return nil
+	},
 }
 
 func setLogger(level slog.Level) error {

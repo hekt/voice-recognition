@@ -7,14 +7,14 @@ import (
 func New() *cli.App {
 	return &cli.App{
 		Commands: []*cli.Command{
-			NewRecognizeCommand(),
-			NewVoskRecognizeCommand(),
-			NewRecognizerCreateCommand(),
-			NewRecognizerDeleteCommand(),
-			NewRecognizerListCommand(),
-			NewPhraseSetCreateCommand(),
-			NewPhraseSetUpdateCommand(),
-			NewPhraseSetListCommand(),
+			recognizeCommand,
+			voskRecognizeCommand,
+			recognizerCreateCommand,
+			recognizerDeleteCommand,
+			recognizerListCommand,
+			phraseSetCreateCommand,
+			phraseSetUpdateCommand,
+			phraseSetListCommand,
 		},
 	}
 }
