@@ -22,8 +22,6 @@ func TestNewMecabPunctuator(t *testing.T) {
 }
 
 func TestMecabPunctuator_Punctuate(t *testing.T) {
-	t.Skip("mecab is not installed in CI")
-
 	type args struct {
 		sentence string
 	}

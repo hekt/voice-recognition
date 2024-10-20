@@ -12,6 +12,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: "actions/checkout@v4"
+      - name: install MeCab
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mecab libmecab-dev mecab-ipadic-utf8
+          echo "CGO_LDFLAGS=$(mecab-config --libs)" >> $GITHUB_ENV
+          echo "CGO_CFLAGS=-I$(mecab-config --inc-dir)" >> $GITHUB_ENV
       - uses: actions/setup-go@v5
         with:
           go-version-file: "go.mod"
@@ -24,6 +31,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: "actions/checkout@v4"
+      - name: install MeCab
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mecab libmecab-dev mecab-ipadic-utf8
+          echo "CGO_LDFLAGS=$(mecab-config --libs)" >> $GITHUB_ENV
+          echo "CGO_CFLAGS=-I$(mecab-config --inc-dir)" >> $GITHUB_ENV
       - uses: actions/setup-go@v5
         with:
           go-version-file: "go.mod"
