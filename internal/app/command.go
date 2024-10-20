@@ -12,9 +12,11 @@ import (
 	speech "cloud.google.com/go/speech/apiv2"
 	"github.com/hekt/voice-recognition/internal/file"
 	"github.com/hekt/voice-recognition/internal/logger"
+	"github.com/hekt/voice-recognition/internal/punctuator/mecab"
 	"github.com/hekt/voice-recognition/internal/recognizer"
 	"github.com/hekt/voice-recognition/internal/resource"
 	vosk "github.com/hekt/vosk-api/go"
+	mecablib "github.com/shogo82148/go-mecab"
 	"github.com/urfave/cli/v2"
 )
 
@@ -130,9 +132,26 @@ var voskRecognizeCommand = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("failed to create recognizer: %w", err)
 		}
+		mc, err := mecablib.New(map[string]string{})
+		if err != nil {
+			return fmt.Errorf("failed to create mecab: %w", err)
+		}
+		defer mc.Destroy()
+
+		// parse empty string to initialize the parser
+		// see https://github.com/shogo82148/go-mecab/commit/272940876bf3b127ada5381ad15595f7f8ec0d8e
+		if _, err := mc.Parse(""); err != nil {
+			return fmt.Errorf("failed to parse empty string: %w", err)
+		}
+
+		punctuator, err := mecab.NewMecabPunctuator(&mc)
+		if err != nil {
+			return fmt.Errorf("failed to create punctuator: %w", err)
+		}
 
 		recognizer, err := recognizer.NewVoskRecognizer(
 			voskRecognizer,
+			punctuator,
 			cCtx.Int(bufferSizeFlag.Name),
 			cCtx.Duration(timeoutFlag.Name),
 			audioReader,

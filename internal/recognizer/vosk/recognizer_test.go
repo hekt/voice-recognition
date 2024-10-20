@@ -9,17 +9,20 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	myvosk "github.com/hekt/voice-recognition/internal/interfaces/vosk"
+	"github.com/hekt/voice-recognition/internal/punctuator"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 )
 
 func TestNewRecognizer(t *testing.T) {
 	type args struct {
 		recognizer *myvosk.VoskRecognizerMock
+		punctuator *punctuator.PunctuatorInterfaceMock
 		audioCh    <-chan []byte
 		resultCh   chan<- []*model.Result
 	}
 	baseArgs := args{
 		recognizer: &myvosk.VoskRecognizerMock{},
+		punctuator: &punctuator.PunctuatorInterfaceMock{},
 		audioCh:    make(chan []byte),
 		resultCh:   make(chan []*model.Result),
 	}
@@ -36,7 +39,12 @@ func TestNewRecognizer(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewRecognizer(tt.args.recognizer, tt.args.audioCh, tt.args.resultCh)
+			got, err := NewRecognizer(
+				tt.args.recognizer,
+				tt.args.punctuator,
+				tt.args.audioCh,
+				tt.args.resultCh,
+			)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewRecognizer() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -69,11 +77,17 @@ func TestRecognizer_Start(t *testing.T) {
 				return <-mockPartialResultCh
 			},
 		}
+		punctuator := &punctuator.PunctuatorInterfaceMock{
+			PunctuateFunc: func(s string) (string, error) {
+				return "p_" + s, nil
+			},
+		}
 		audioCh := make(chan []byte)
 		resultCh := make(chan []*model.Result, 3)
 
 		r := &Recognizer{
 			recognizer: recognizer,
+			punctuator: punctuator,
 			audioCh:    audioCh,
 			resultCh:   resultCh,
 		}
@@ -107,8 +121,8 @@ func TestRecognizer_Start(t *testing.T) {
 			t.Errorf("Recognizer.Start() error = %v, want %v", err, context.Canceled)
 		}
 		wantResults := [][]*model.Result{
-			{{Transcript: "hello", IsFinal: false}},
-			{{Transcript: "world", IsFinal: true}},
+			{{Transcript: "p_hello", IsFinal: false}},
+			{{Transcript: "p_world", IsFinal: true}},
 		}
 		for _, want := range wantResults {
 			got := <-resultCh

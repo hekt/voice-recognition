@@ -11,6 +11,7 @@ import (
 
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	myvosk "github.com/hekt/voice-recognition/internal/interfaces/vosk"
+	"github.com/hekt/voice-recognition/internal/punctuator"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 	"github.com/hekt/voice-recognition/internal/testutil"
 )
@@ -123,6 +124,7 @@ func Test_New(t *testing.T) {
 func TestNewVoskRecognizer(t *testing.T) {
 	type args struct {
 		voskRecognizer  myvosk.VoskRecognizer
+		punctuator      punctuator.PunctuatorInterface
 		bufferSize      int
 		inactiveTimeout time.Duration
 		ioAudioReader   io.Reader
@@ -131,6 +133,7 @@ func TestNewVoskRecognizer(t *testing.T) {
 	}
 	baseArgs := args{
 		voskRecognizer:  &myvosk.VoskRecognizerMock{},
+		punctuator:      &punctuator.PunctuatorInterfaceMock{},
 		bufferSize:      1024,
 		inactiveTimeout: time.Minute,
 		ioAudioReader:   &bytes.Buffer{},
@@ -169,6 +172,7 @@ func TestNewVoskRecognizer(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := NewVoskRecognizer(
 				tt.args.voskRecognizer,
+				tt.args.punctuator,
 				tt.args.bufferSize,
 				tt.args.inactiveTimeout,
 				tt.args.ioAudioReader,

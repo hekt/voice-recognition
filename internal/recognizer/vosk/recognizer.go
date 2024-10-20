@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	myvosk "github.com/hekt/voice-recognition/internal/interfaces/vosk"
+	"github.com/hekt/voice-recognition/internal/punctuator"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 )
 
@@ -14,17 +15,22 @@ var _ model.RecognizerCoreInterface = (*Recognizer)(nil)
 
 type Recognizer struct {
 	recognizer myvosk.VoskRecognizer
+	punctuator punctuator.PunctuatorInterface
 	audioCh    <-chan []byte
 	resultCh   chan<- []*model.Result
 }
 
 func NewRecognizer(
 	recognizer myvosk.VoskRecognizer,
+	punctuator punctuator.PunctuatorInterface,
 	audioCh <-chan []byte,
 	resultCh chan<- []*model.Result,
 ) (*Recognizer, error) {
 	if recognizer == nil {
 		return nil, errors.New("recognizer must be specified")
+	}
+	if punctuator == nil {
+		return nil, errors.New("punctuator must be specified")
 	}
 	if audioCh == nil {
 		return nil, errors.New("audio channel must be specified")
@@ -35,6 +41,7 @@ func NewRecognizer(
 
 	return &Recognizer{
 		recognizer: recognizer,
+		punctuator: punctuator,
 		audioCh:    audioCh,
 		resultCh:   resultCh,
 	}, nil
@@ -61,8 +68,12 @@ func (r *Recognizer) Start(ctx context.Context) error {
 				if t == "" {
 					continue
 				}
+				punctuated, err := r.punctuator.Punctuate(t)
+				if err != nil {
+					return fmt.Errorf("failed to punctuate: %w", err)
+				}
 				results = []*model.Result{
-					{Transcript: t, IsFinal: false},
+					{Transcript: punctuated, IsFinal: false},
 				}
 			} else {
 				t, err := parseResult(r.recognizer.Result())
@@ -72,8 +83,12 @@ func (r *Recognizer) Start(ctx context.Context) error {
 				if t == "" {
 					continue
 				}
+				punctuated, err := r.punctuator.Punctuate(t)
+				if err != nil {
+					return fmt.Errorf("failed to punctuate: %w", err)
+				}
 				results = []*model.Result{
-					{Transcript: t, IsFinal: true},
+					{Transcript: punctuated, IsFinal: true},
 				}
 			}
 

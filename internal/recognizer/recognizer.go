@@ -14,6 +14,7 @@ import (
 
 	myspeech "github.com/hekt/voice-recognition/internal/interfaces/speech"
 	myvosk "github.com/hekt/voice-recognition/internal/interfaces/vosk"
+	"github.com/hekt/voice-recognition/internal/punctuator"
 	"github.com/hekt/voice-recognition/internal/recognizer/google"
 	"github.com/hekt/voice-recognition/internal/recognizer/model"
 	"github.com/hekt/voice-recognition/internal/recognizer/vosk"
@@ -104,6 +105,7 @@ func New(
 
 func NewVoskRecognizer(
 	voskRecognizer myvosk.VoskRecognizer,
+	punctuator punctuator.PunctuatorInterface,
 	bufferSize int,
 	inactiveTimeout time.Duration,
 	ioAudioReader io.Reader,
@@ -121,7 +123,7 @@ func NewVoskRecognizer(
 	resultCh := make(chan []*model.Result, 10)
 	processCh := make(chan struct{}, 1)
 
-	recognizer, err := vosk.NewRecognizer(voskRecognizer, audioCh, resultCh)
+	recognizer, err := vosk.NewRecognizer(voskRecognizer, punctuator, audioCh, resultCh)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vosk recognizer: %w", err)
 	}
