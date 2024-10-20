@@ -11,6 +11,7 @@ Google Cloud Speech-to-Text API を使っているためそのコストがかか
 - gcloud CLI
 - GStreamer
 - BlackHole 2ch
+- mecab 0.996
 - (Google Cloud Speech-to-Text API)
   - `speech.recognizers.create`
   - `speech.recognizers.delete`
@@ -18,6 +19,17 @@ Google Cloud Speech-to-Text API を使っているためそのコストがかか
   - `speech.recognizers.recognize`
 
 ## 手順
+
+### MeCab のインストール
+
+vosk で使うために MeCab をインストールする。依存の関係で vosk を使わなくても必須。
+
+```shell
+brew install mecab mecab-ipadic
+
+export CGO_LDLAGS="$(mecab-config --libs)"
+export CGO_CFLAGS="-I$(mecab-config --incdir)"
+```
 
 ### Mac のオーディオ設定
 
@@ -85,8 +97,8 @@ cd ../
 
 export VOSK_PATH=/path/to/repository/lib/vosk-osx-0.3.42
 export DYLD_LIBRARY_PATH=$VOSK_PATH
-export CGO_CPPFLAGS="-I $VOSK_PATH"
-export CGO_LDFLAGS="-L $VOSK_PATH"
+export CGO_CPPFLAGS="-I $VOSK_PATH $CGO_CPPFLAGS"
+export CGO_LDFLAGS="-L $VOSK_PATH $CGO_LDFLAGS"
 
 gst-launch-1.0 -q osxaudiosrc device=<deviceNo> \
         ! audio/x-raw,format=S16LE,channels=1,rate=16000 \

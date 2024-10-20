@@ -8,6 +8,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/googleapis/gax-go/v2 v2.13.0
 	github.com/hekt/vosk-api v0.3.42-mod3
+	github.com/shogo82148/go-mecab v0.0.8
 	github.com/urfave/cli/v2 v2.27.4
 	golang.org/x/sync v0.8.0
 	google.golang.org/api v0.196.0
